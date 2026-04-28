@@ -1,0 +1,16 @@
+.env
+*.log
+logs/*
+backups/*
+configs/server/*.json
+configs/client/*.json
+nodes/*/*.env
+nodes/*/client*.json
+docs/tree_snapshot.txt
+
+!logs/.gitkeep
+!backups/.gitkeep
+!configs/server/.gitkeep
+!configs/client/.gitkeep
+!nodes/.gitkeep
+!templates/.gitkeep
