@@ -103,3 +103,11 @@ cat docs/tree_snapshot.txt
 ```
 
 若命令均成功，且 `docs/tree_snapshot.txt` 可读，则 Round 0 骨架验收通过。
+
+
+## 路线选择：自建、托管订阅与混合模式
+本项目不只服务于自建 VPS 路线，也会记录托管订阅方案。
+
+- 短期建议：优先使用托管订阅恢复 ChatGPT / Claude / YouTube / GitHub 等生产力访问。
+- 中长期建议：保留并持续建设自建节点，作为备用与学习路线。
+- 详细策略请见：`docs/05_managed_provider_strategy.md`。
