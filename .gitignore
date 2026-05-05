@@ -1,9 +1,14 @@
 .env
+.idea/
+.DS_Store
 *.log
 logs/*
 backups/*
 configs/server/*.json
 configs/client/*.json
+configs/client/*.txt
+configs/client/*.yaml
+configs/client/*.yml
 nodes/*/*.env
 nodes/*/client*.json
 docs/tree_snapshot.txt

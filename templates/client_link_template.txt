@@ -1,0 +1,21 @@
+Shadowrocket / 通用 VLESS 导入链接模板：
+
+vless://${XRAY_UUID}@${NODE_HOST}:${NODE_PORT}?encryption=none&flow=${XRAY_FLOW}&security=reality&sni=${XRAY_SERVER_NAME}&fp=${CLIENT_FINGERPRINT}&pbk=${XRAY_REALITY_PUBLIC_KEY}&sid=${XRAY_REALITY_SHORT_ID}&type=tcp&headerType=none#${NODE_NAME}
+
+字段替换说明：
+
+1. `${XRAY_UUID}`：服务端配置里的客户端 UUID。
+2. `${NODE_HOST}`：VPS IP 或域名。没有域名时可以先填 VPS IP。
+3. `${NODE_PORT}`：服务端监听端口，通常是 `443`。
+4. `${XRAY_FLOW}`：与服务端一致，通常是 `xtls-rprx-vision`。
+5. `${XRAY_SERVER_NAME}`：REALITY serverName，必须与服务端配置一致。
+6. `${CLIENT_FINGERPRINT}`：客户端指纹，通常使用 `chrome`。
+7. `${XRAY_REALITY_PUBLIC_KEY}`：REALITY 公钥，来自 `xray x25519` 输出。
+8. `${XRAY_REALITY_SHORT_ID}`：REALITY shortId，必须与服务端配置一致。
+9. `${NODE_NAME}`：客户端里显示的节点名称。若包含空格或中文，建议做 URL 编码。
+
+安全提醒：
+
+1. 生成后的真实链接包含敏感信息，不要提交到 Git。
+2. 不要把真实链接发到公开聊天、论坛或截图中。
+3. 如果链接泄露，建议重新生成 UUID、REALITY 密钥和 shortId。
