@@ -8,12 +8,14 @@
 本项目强调“工程化管理”，而不是“一次性脚本执行后就不再维护”。
 
 ## 当前阶段
-当前处于 **Round 3（客户端配置模板与初步连接阶段）**：
+当前处于 **Round 5（Mac 电脑端接入阶段）**：
 - 已建立目录结构与基础文档。
 - 已完成 VPS 基础初始化。
 - 已完成 Xray 服务端安装与启动。
 - 已准备 sing-box / Shadowrocket 客户端配置模板。
-- 真实客户端配置需要用户在本地替换占位符后导入。
+- 已完成 iPhone sing-box VT 实机连接验收。
+- 已完成健康检查、远程备份、诊断采集和恢复流程。
+- 正在补齐 Mac 端导入、授权、验证和排障流程。
 
 ## 本项目不做什么
 为了保证后续可控迭代，本轮明确不做以下事情：
@@ -36,12 +38,25 @@ resilient-personal-network/
 │   ├── 10_vps_init.md
 │   ├── 11_install_xray.md
 │   ├── 12_client_config_explained.md
+│   ├── 20_operations_runbook.md
+│   ├── 21_macos_client_setup.md
 │   └── round_notes.md
 ├── scripts/
 │   ├── init_project.sh
 │   ├── snapshot_tree.sh
 │   ├── vps_init.sh
-│   └── install_xray.sh
+│   ├── install_xray.sh
+│   ├── validate_xray_config.sh
+│   ├── deploy_xray_config.sh
+│   ├── generate_shadowrocket_link.sh
+│   ├── generate_singbox_config.sh
+│   ├── validate_shadowrocket_link.sh
+│   ├── check_xray_health.sh
+│   ├── backup_remote_xray.sh
+│   ├── restore_remote_xray_config.sh
+│   ├── collect_remote_diagnostics.sh
+│   ├── check_macos_singbox.sh
+│   └── copy_shadowrocket_link_macos.sh
 ├── configs/
 │   ├── server/
 │   │   └── .gitkeep
@@ -159,7 +174,23 @@ cp templates/xray_server_vless_reality.json.template configs/server/config.json
 替换所有 `${...}` 占位符后上传：
 
 ```bash
+grep -nF '${' configs/server/config.json
+bash scripts/validate_xray_config.sh configs/server/config.json
+```
+
+确认没有占位符，并看到 `[done] xray config validation passed` 后，再上传：
+
+```bash
 scp -P 22 configs/server/config.json root@<你的_VPS_IP>:/usr/local/etc/xray/config.json
+```
+
+更推荐使用部署脚本自动完成上传、远程备份、权限设置、UFW 端口放行和重启：
+
+```bash
+VPS_HOST="<你的_VPS_IP>" \
+SSH_USER="root" \
+SSH_PORT="22" \
+bash scripts/deploy_xray_config.sh
 ```
 
 登录 VPS 后设置权限，让 `xray` 服务进程可以读取配置：
@@ -184,24 +215,80 @@ systemctl status xray --no-pager
 sing-box 客户端：
 
 ```bash
-cp templates/singbox_client_template.json configs/client/singbox.json
+NODE_HOST="<你的_VPS_IP或域名>" \
+XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
+bash scripts/generate_singbox_config.sh
 ```
 
-替换 `configs/client/singbox.json` 中所有 `${...}` 占位符，然后检查：
+默认生成 `tun` 模式，适合 sing-box VT 在 iPhone / iPad / Mac 上作为 VPN Profile 使用。  
+如果 sing-box VT 提示 `legacy special outbounds` 弃用警告，请重新生成并导入最新配置。
+
+生成后检查：
 
 ```bash
-grep -n '\\${' configs/client/singbox.json
+grep -nF '${' configs/client/singbox.json
 jq empty configs/client/singbox.json
 ```
 
+如果 `grep -nF '${'` 没有输出，才表示占位符替换完毕。  
+`${SINGBOX_MIXED_PORT}` 和 `${NODE_PORT}` 是数字字段，替换时不要加引号。
+
 Shadowrocket 客户端：
 
-1. 打开 `templates/client_link_template.txt`。
-2. 复制 `vless://...` 模板。
-3. 替换所有 `${...}` 占位符。
-4. 在 Shadowrocket 中从剪贴板或 URL 导入。
+推荐用脚本生成导入链接：
+
+```bash
+NODE_HOST="<你的_VPS_IP或域名>" \
+XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
+NODE_NAME="jp-tokyo-01" \
+bash scripts/generate_shadowrocket_link.sh
+```
+
+然后复制 `configs/client/shadowrocket_link.txt` 里的 `vless://...` 链接，在 Shadowrocket 中从剪贴板或 URL 导入。
+
+导入前可以先验证链接字段：
+
+```bash
+bash scripts/validate_shadowrocket_link.sh
+```
+
+导入后进入节点详情，点 `TLS`，确认 `Reality`、`SNI`、`Public Key`、`Short ID`、`Fingerprint` 都已正确显示。  
+如果提示“使用中的配置无法删除”，先关闭 Shadowrocket 总开关和 iOS VPN，再删除旧节点。
 
 详细说明请看 `docs/12_client_config_explained.md`。
+
+## Mac 电脑端接入
+Mac 端推荐继续使用 sing-box VT，并复用 `configs/client/singbox.json`。
+
+如果需要重新生成 Mac 可用配置：
+
+```bash
+NODE_HOST="<你的_VPS_IP或域名>" \
+XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
+SINGBOX_MODE="tun" \
+bash scripts/generate_singbox_config.sh
+```
+
+导入到 Mac sing-box VT 后，先允许 macOS 添加 VPN Profile，再启用配置。
+
+启用前后都可以运行本地检查：
+
+```bash
+EXPECTED_EXIT_IP="<你的_VPS_IP>" \
+bash scripts/check_macos_singbox.sh
+```
+
+启用前如果出口 IP 不一致是正常的；启用后应看到出口 IP 与 VPS IP 一致。  
+详细说明请看 `docs/21_macos_client_setup.md`。
+
+如果 Mac App Store 暂时无法下载 sing-box VT，而你已经安装了 Shadowrocket，可以直接重新导入 Shadowrocket 链接：
+
+```bash
+bash scripts/copy_shadowrocket_link_macos.sh
+```
+
+脚本会把已校验的 `vless://...` 链接复制到剪贴板，但不会在终端显示完整链接。  
+然后在 Shadowrocket 中选择从剪贴板或 URL 导入即可。
 
 ## 初次连接检查
 登录 VPS 后确认服务运行：
@@ -209,6 +296,7 @@ Shadowrocket 客户端：
 ```bash
 systemctl status xray --no-pager -l
 ss -lntp | grep ":443"
+ufw status verbose
 ```
 
 在本机检查端口连通：
@@ -217,7 +305,55 @@ ss -lntp | grep ":443"
 nc -vz <你的_VPS_IP> 443
 ```
 
+如果 `ufw status verbose` 只看到 `22/tcp ALLOW IN`，说明 VPS 只放行了 SSH，需要先放行 Xray 的 TCP 端口：
+
+```bash
+ufw allow proto tcp to any port 443 comment 'resilient-personal-network xray inbound'
+ufw reload
+```
+
 如果端口通但客户端连不上，优先检查 UUID、公钥、shortId、serverName 和 flow 是否与服务端一致。
+
+也可以运行完整健康检查：
+
+```bash
+VPS_HOST="<你的_VPS_IP>" SSH_USER="root" SSH_PORT="22" bash scripts/check_xray_health.sh
+```
+
+## 稳定性、备份和恢复
+节点跑通后，建议先做一次远程备份：
+
+```bash
+VPS_HOST="<你的_VPS_IP>" \
+SSH_USER="root" \
+SSH_PORT="22" \
+bash scripts/backup_remote_xray.sh
+```
+
+备份包会保存在 VPS 的 `/opt/resilient-personal-network/backups/`，并默认下载到本机 `backups/`。  
+注意：备份包包含真实服务端配置，不要公开分享，也不要提交到 Git。
+
+如果需要采集排障信息：
+
+```bash
+VPS_HOST="<你的_VPS_IP>" \
+SSH_USER="root" \
+SSH_PORT="22" \
+bash scripts/collect_remote_diagnostics.sh
+```
+
+诊断日志会保存在本机 `logs/`，并做基础脱敏。
+
+如果配置损坏，需要从备份恢复：
+
+```bash
+VPS_HOST="<你的_VPS_IP>" \
+SSH_USER="root" \
+SSH_PORT="22" \
+bash scripts/restore_remote_xray_config.sh backups/<你的备份包>.tar.gz
+```
+
+详细说明请看 `docs/20_operations_runbook.md`。
 
 ## 后续轮次简介
 1. **Round 1：VPS 初始化脚本与文档**
@@ -231,8 +367,14 @@ nc -vz <你的_VPS_IP> 443
 3. **Round 3：客户端配置模板与初步连接**
    - 生成 sing-box / Shadowrocket 客户端配置模板。
    - 说明如何替换占位符、导入客户端并进行初次连接检查。
-4. **后续轮次：备份、巡检与故障切换**
-   - 逐步增加节点备份、健康检查、日志分析和多节点故障切换流程。
+4. **Round 4：稳定性、备份与恢复**
+   - 增加节点备份、健康检查、诊断采集和恢复流程。
+5. **Round 5：Mac 电脑端接入**
+   - 复用当前节点配置，整理 Mac sing-box VT 导入、启用和验证流程。
+6. **Round 6：节点资产管理**
+   - 增加节点档案、续费信息、变更日志和设备清单。
+7. **后续轮次：安全加固与故障切换**
+   - 增加 SSH 加固、多节点备份和故障切换流程。
 
 ## 安全提醒
 - 真实敏感数据只允许通过 `.env`（本地）或安全凭据系统管理。
@@ -280,10 +422,49 @@ cat /opt/resilient-personal-network/logs/xray_install.log
 
 ```bash
 cp templates/singbox_client_template.json configs/client/singbox.json
-grep -n '\\${' configs/client/singbox.json
+grep -nF '${' configs/client/singbox.json
 jq empty configs/client/singbox.json
 ```
 
 注意：复制后需要先替换所有 `${...}` 占位符。  
 替换完成后，`grep` 没有输出且 `jq` 不报错，则客户端配置文件格式通过。  
 导入客户端并能连接节点，则 Round 3 初步连接验收通过。
+
+## Round 4 验收命令
+请按顺序执行：
+
+```bash
+bash -n scripts/*.sh
+VPS_HOST="<你的_VPS_IP>" SSH_USER="root" SSH_PORT="22" bash scripts/check_xray_health.sh
+VPS_HOST="<你的_VPS_IP>" SSH_USER="root" SSH_PORT="22" bash scripts/collect_remote_diagnostics.sh
+VPS_HOST="<你的_VPS_IP>" SSH_USER="root" SSH_PORT="22" bash scripts/backup_remote_xray.sh
+bash scripts/snapshot_tree.sh
+```
+
+若健康检查通过、诊断日志生成、备份包生成，且快照可读，则 Round 4 验收通过。
+
+## Round 5 验收命令
+请按顺序执行：
+
+```bash
+bash -n scripts/*.sh
+jq empty configs/client/singbox.json
+EXPECTED_EXIT_IP="<你的_VPS_IP>" bash scripts/check_macos_singbox.sh
+bash scripts/copy_shadowrocket_link_macos.sh
+bash scripts/snapshot_tree.sh
+```
+
+在 Mac sing-box VT 启用配置后，再运行一次：
+
+```bash
+EXPECTED_EXIT_IP="<你的_VPS_IP>" bash scripts/check_macos_singbox.sh
+```
+
+若启用后脚本显示当前出口 IP 与 VPS IP 一致，则 Round 5 Mac 端验收通过。
+
+## 路线选择：自建、托管订阅与混合模式
+本项目不只服务于自建 VPS 路线，也会记录托管订阅方案。
+
+- 短期建议：优先使用托管订阅恢复 ChatGPT / Claude / YouTube / GitHub 等生产力访问。
+- 中长期建议：保留并持续建设自建节点，作为备用与学习路线。
+- 详细策略请见：`docs/05_managed_provider_strategy.md`。

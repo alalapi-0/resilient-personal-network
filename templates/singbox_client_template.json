@@ -25,11 +25,14 @@
   },
   "inbounds": [
     {
-      "type": "mixed",
-      "tag": "mixed-in",
-      "listen": "127.0.0.1",
-      "listen_port": ${SINGBOX_MIXED_PORT},
-      "sniff": true
+      "type": "tun",
+      "tag": "tun-in",
+      "address": [
+        "172.18.0.1/30",
+        "fdfe:dcba:9876::1/126"
+      ],
+      "auto_route": true,
+      "strict_route": true
     }
   ],
   "outbounds": [
@@ -67,17 +70,18 @@
     {
       "type": "direct",
       "tag": "direct"
-    },
-    {
-      "type": "block",
-      "tag": "block"
     }
   ],
   "route": {
     "rules": [
       {
+        "inbound": "tun-in",
+        "action": "sniff",
+        "timeout": "1s"
+      },
+      {
         "protocol": "dns",
-        "outbound": "proxy"
+        "action": "hijack-dns"
       }
     ],
     "final": "proxy",
