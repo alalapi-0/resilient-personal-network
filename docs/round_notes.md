@@ -256,6 +256,12 @@ Round 0.6：建立 `subscriptions/` 目录与服务质量评估模板。
 4. 更新 Windows 一键包生成脚本，生成的 PowerShell 脚本会写入 UTF-8 BOM，减少 Windows PowerShell 5.x 中文乱码。
 5. Windows 用户如果只配置客户端，不需要运行 `vps_init.sh` 或 `install_xray.sh`；应使用 v2rayN 导入 `vless://...` 分享链接。
 
+## SSH 密钥与 VPS 信任配置
+1. 新增 `docs/26_ssh_key_and_vps_trust.md`，说明不同系统如何查看、生成和加载 SSH 密钥。
+2. 文档补充 `authorized_keys`、`known_hosts`、`ssh-agent`、首次连接输入 `yes` 的含义。
+3. 明确 SSH 密钥与 Xray / REALITY 密钥不是同一类密钥，避免把服务配置密钥和登录密钥混用。
+4. 更新 README、VPS 初始化文档、跨系统命令文档和术语表，加入 SSH 密钥文档入口。
+
 ## 待确认问题
 1. 节点命名规则是否采用“地区-城市-序号”固定格式？
 2. 后续 CLI 倾向 Bash 还是 Python 实现？

@@ -2,6 +2,8 @@
 
 本文件专门解决一个问题：同一条项目命令，在 macOS、Linux、Git Bash、WSL 和 Windows PowerShell 里的写法不一样。
 
+如果你需要了解 SSH 密钥怎么生成、`authorized_keys` 怎么配置、第一次连接 VPS 为什么要输入 `yes`，请看 `docs/26_ssh_key_and_vps_trust.md`。
+
 如果把 Bash 写法直接复制到 PowerShell，常见报错是：
 
 ```text

@@ -25,6 +25,9 @@
 
 仓库文件只保留占位符。真实 IP、域名、密钥、密码不要提交到 Git。
 
+如果你还没有在当前电脑配置 SSH 密钥，或者 Windows 第一次连接 VPS 时出现 `Host key verification failed`，先看 `docs/26_ssh_key_and_vps_trust.md`。
+那份文档会说明不同系统如何生成本机密钥、把公钥写入 VPS、完成 `known_hosts` 首次信任。
+
 ## 3. 推荐运行方式
 
 在本机仓库根目录执行：
@@ -69,6 +72,8 @@ ssh-add --apple-use-keychain ~/.ssh/id_ed25519
 ```bash
 ssh-add ~/.ssh/id_ed25519
 ```
+
+Windows PowerShell、Linux、WSL 和 Git Bash 的密钥加载方式不同，详见 `docs/26_ssh_key_and_vps_trust.md`。
 
 ## 5. 初始化后如何检查
 

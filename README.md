@@ -46,6 +46,7 @@ resilient-personal-network/
 │   ├── 23_windows_one_click_bundle.md
 │   ├── 24_maintenance_schedule.md
 │   ├── 25_cross_platform_command_guide.md
+│   ├── 26_ssh_key_and_vps_trust.md
 │   └── round_notes.md
 ├── scripts/
 │   ├── init_project.sh
@@ -126,6 +127,22 @@ $env:VPS_HOST="<你的_VPS_IP>"; $env:SSH_USER="root"; $env:SSH_PORT="22"; bash 
 如果看到 `PS C:\...>`，不要复制 `VPS_HOST="..." \` 这种 Bash 多行写法。
 完整说明请看 `docs/25_cross_platform_command_guide.md`。
 
+## SSH 密钥与 VPS 信任
+每台本机电脑都需要具备可用的 SSH 登录能力，项目脚本才能通过 SSH 检查、备份或部署 VPS。
+
+你需要分清两件事：
+
+1. SSH 密钥：用于本机登录 VPS。
+2. Xray / REALITY 密钥：用于客户端连接代理服务。
+
+不同系统查看、生成和加载 SSH 密钥的方式不同：
+
+- macOS / Linux / Git Bash / WSL：通常使用 `~/.ssh/id_ed25519`。
+- Windows PowerShell：通常使用 `C:\Users\<你的用户名>\.ssh\id_ed25519`。
+- 首次连接 VPS 时，需要输入 `yes` 把 VPS 主机指纹写入本机 `known_hosts`。
+
+详细步骤请看 `docs/26_ssh_key_and_vps_trust.md`。
+
 ## 如何准备 VPS
 你需要先在云厂商处创建一台 Linux VPS，并确认以下信息：
 
@@ -141,6 +158,8 @@ $env:VPS_HOST="<你的_VPS_IP>"; $env:SSH_USER="root"; $env:SSH_PORT="22"; bash 
 ```bash
 ssh-add --apple-use-keychain ~/.ssh/id_ed25519
 ```
+
+Windows、Linux、WSL、Git Bash 的 SSH 密钥和 `ssh-agent` 配置方式请看 `docs/26_ssh_key_and_vps_trust.md`。
 
 ## VPS 初始化方式
 在仓库根目录执行：
@@ -462,7 +481,9 @@ bash scripts/restore_remote_xray_config.sh backups/<你的备份包>.tar.gz
 8. **多系统命令写法整理**
    - 区分 macOS/Linux/Git Bash/WSL、Windows PowerShell、VPS 远程 shell 的命令写法。
    - 避免把 Bash 环境变量写法复制到 PowerShell。
-9. **后续轮次：安全加固与故障切换**
+9. **SSH 密钥与 VPS 信任配置**
+   - 说明不同系统如何生成 SSH 密钥、写入 `authorized_keys`、处理 `known_hosts` 和首次信任。
+10. **后续轮次：安全加固与故障切换**
    - 增加 SSH 加固、多节点备份和故障切换流程。
 
 ## 安全提醒
