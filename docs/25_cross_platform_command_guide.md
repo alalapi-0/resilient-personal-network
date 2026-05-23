@@ -182,6 +182,7 @@ journalctl -u xray -n 100 --no-pager -l
 | Windows 运行 `.ps1` 一闪而过 | 双击脚本后窗口自动关闭 | 在文件夹地址栏输入 `powershell`，再运行脚本 |
 | PowerShell 阻止脚本执行 | 当前窗口执行策略限制 | 运行 `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` |
 | `bash` 不是内部或外部命令 | Windows 没有可用 Bash | 安装 Git for Windows，或改用 WSL |
+| `ssh` 打开空白文档，没有回显 | Windows 命令优先匹配到了异常的 `C:\Windows\System32\ssh` | 改用 `& "$env:WINDIR\System32\OpenSSH\ssh.exe"`，或运行项目的 Windows 专用 `.ps1` 脚本 |
 | 在 VPS 上执行 `bash scripts/...` 找不到文件 | 这些脚本在本机仓库，不在 VPS 当前目录 | 回到本机仓库执行，或先上传相关脚本 |
 
 ## 7. Windows 客户端配置不要跑错脚本
@@ -203,6 +204,17 @@ bash scripts/build_windows_client_bundle.sh
 ```
 
 然后在 Windows 上使用生成包里的 `.ps1` 脚本和 v2rayN 导入链接。
+
+如果你的 VPS 已经配置好，Windows 本机只想直接拿到 v2rayN 链接，可以在 Windows PowerShell 运行：
+
+```powershell
+$env:VPS_HOST="<你的_VPS_IP或域名>"
+$env:SSH_USER="root"
+$env:SSH_PORT="22"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows_generate_vless_link_from_vps.ps1
+```
+
+该脚本不要求 Windows 本机安装 `jq`，会让 VPS 自己读取当前 Xray 配置并生成链接。
 
 ## 8. 验收标准
 

@@ -66,6 +66,7 @@ resilient-personal-network/
 │   ├── check_macos_singbox.sh
 │   ├── copy_shadowrocket_link_macos.sh
 │   ├── prepare_windows_vless_link.sh
+│   ├── windows_generate_vless_link_from_vps.ps1
 │   └── build_windows_client_bundle.sh
 ├── configs/
 │   ├── server/
@@ -356,7 +357,20 @@ Windows 上不要使用只有“服务器、端口、密码、加密方式”的
 PowerShell 环境变量应写成 `$env:变量名="值"`，完整示例见 `docs/25_cross_platform_command_guide.md`。
 如果只是配置 Windows 客户端，不需要重新运行 `vps_init.sh` 或 `install_xray.sh`。
 
-先准备 Windows 可导入链接：
+如果 VPS 已经配置好，但 Windows 本机还没有 `jq` 或 GitHub 访问暂时不稳定，推荐直接从 VPS 生成 v2rayN 导入链接。
+该脚本会显式调用 `C:\Windows\System32\OpenSSH\ssh.exe`，避开某些 Windows 环境中 `ssh` 打开空文档的问题：
+
+```powershell
+$env:VPS_HOST="<你的_VPS_IP或域名>"
+$env:SSH_USER="root"
+$env:SSH_PORT="22"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows_generate_vless_link_from_vps.ps1
+```
+
+脚本会把 `vless://...` 链接复制到剪贴板，并保存到桌面的 `vless-link.txt`。
+然后在 Windows v2rayN 中选择从剪贴板导入分享链接。
+
+如果是在 macOS / Linux / Git Bash / WSL 上准备链接，也可以运行：
 
 ```bash
 bash scripts/prepare_windows_vless_link.sh

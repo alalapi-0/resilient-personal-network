@@ -80,6 +80,17 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 如果 PowerShell 中出现 `VPS_HOST=... 无法识别` 之类错误，说明你把 Bash 环境变量写法复制到了 PowerShell。
 Windows 端应使用 `$env:VPS_HOST="..."`，不要使用 `VPS_HOST="..." \`。
 
+如果 Windows 上 GitHub 暂时访问不通，或者本机还没装 `jq`，但 VPS 已经配置好，可以先不用生成一键包，直接运行仓库里的远程生成脚本：
+
+```powershell
+$env:VPS_HOST="<你的_VPS_IP或域名>"
+$env:SSH_USER="root"
+$env:SSH_PORT="22"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows_generate_vless_link_from_vps.ps1
+```
+
+这个脚本会显式使用 `C:\Windows\System32\OpenSSH\ssh.exe`，并把 v2rayN 导入链接复制到剪贴板。
+
 ## 5. 为什么不直接自动写入 v2rayN
 
 v2rayN 的内部配置格式会随版本变化。

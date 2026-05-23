@@ -269,6 +269,13 @@ Round 0.6：建立 `subscriptions/` 目录与服务质量评估模板。
 4. 如果本地已有配置，脚本会先备份到 `backups/`，避免静默覆盖。
 5. 已改进 Windows 体验：本机缺少 `jq` 时不再中断拉取，会在远端校验通过后保存配置并提示安装 `jq`。
 
+## Windows OpenSSH 路径修复
+1. 新增 `scripts/windows_generate_vless_link_from_vps.ps1`，用于在 Windows PowerShell 中直接从已配置好的 VPS 生成 v2rayN 导入链接。
+2. 脚本显式调用 `C:\Windows\System32\OpenSSH\ssh.exe`，避免 `C:\Windows\System32\ssh` 异常抢占导致打开空白文档。
+3. 脚本不要求 Windows 本机安装 `jq`，会在 VPS 上读取 Xray 配置并计算 VLESS + REALITY 分享链接。
+4. 链接会复制到 Windows 剪贴板，并保存到桌面 `vless-link.txt`，但不会在屏幕上打印完整敏感链接。
+5. README、Windows 接入手册、多系统命令说明和 SSH 密钥文档已同步补充该流程。
+
 ## 待确认问题
 1. 节点命名规则是否采用“地区-城市-序号”固定格式？
 2. 后续 CLI 倾向 Bash 还是 Python 实现？

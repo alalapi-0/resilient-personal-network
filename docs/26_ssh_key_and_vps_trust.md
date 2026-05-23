@@ -129,6 +129,30 @@ Get-Command ssh
 Get-Command ssh-keygen
 ```
 
+如果执行 `ssh -p 22 root@<你的_VPS_IP或域名> "echo ok"` 后没有要求输入密码，也没有返回 `ok`，反而打开了一个空白文档，通常说明 `ssh` 命令被异常路径抢占。
+
+先检查命令路径：
+
+```powershell
+where.exe ssh
+```
+
+如果结果里同时出现类似下面两行：
+
+```text
+C:\WINDOWS\System32\ssh
+C:\WINDOWS\System32\OpenSSH\ssh.exe
+```
+
+请优先使用真实的 OpenSSH 客户端：
+
+```powershell
+& "$env:WINDIR\System32\OpenSSH\ssh.exe" -p 22 root@<你的_VPS_IP或域名> "echo ok"
+```
+
+看到 `ok` 后，说明 SSH 客户端路径没问题。
+项目里的 `scripts/windows_generate_vless_link_from_vps.ps1` 已经内置这个路径选择逻辑，不会直接调用异常的 `ssh`。
+
 查看是否已有密钥：
 
 ```powershell

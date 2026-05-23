@@ -64,6 +64,43 @@ https://github.com/2dust/v2rayN/wiki/Release-files-introduction
 如果你的目标只是让 Windows 电脑连上现有节点，不需要重新运行 `scripts/vps_init.sh` 或 `scripts/install_xray.sh`。
 那两个脚本是 VPS 服务端初始化和安装脚本，Windows 客户端阶段只需要准备分享链接或一键包。
 
+### 3.1 已有 VPS，直接在 Windows 从远程生成链接
+
+如果你的 VPS 已经能跑通手机或 Mac，但 Windows 本机暂时缺少 `jq`，或者 GitHub 下载不稳定，可以先跳过本地配置生成，直接让 VPS 读自己的 Xray 配置并输出 v2rayN 可导入链接。
+
+在 Windows PowerShell 中进入仓库根目录，例如：
+
+```powershell
+cd D:\ProgramData\resilient-personal-network\resilient-personal-network
+```
+
+然后运行：
+
+```powershell
+$env:VPS_HOST="<你的_VPS_IP或域名>"
+$env:SSH_USER="root"
+$env:SSH_PORT="22"
+powershell -ExecutionPolicy Bypass -File .\scripts\windows_generate_vless_link_from_vps.ps1
+```
+
+这个脚本会做几件事：
+
+1. 显式调用 `C:\Windows\System32\OpenSSH\ssh.exe`，避免 `ssh` 命令被异常同名文件抢占。
+2. 通过 SSH 读取 VPS 上的 `/usr/local/etc/xray/config.json`。
+3. 在 VPS 上使用已经安装好的 `jq` 和 `xray` 计算 VLESS + REALITY 分享链接。
+4. 不在屏幕上打印完整链接。
+5. 把链接复制到 Windows 剪贴板，并保存到桌面的 `vless-link.txt`。
+
+如果你前面执行过下面这条命令，并且返回了 `ok`，说明 SSH 通道已经满足脚本要求：
+
+```powershell
+& "$env:WINDIR\System32\OpenSSH\ssh.exe" -p 22 root@<你的_VPS_IP或域名> "echo ok"
+```
+
+注意：桌面的 `vless-link.txt` 包含真实节点信息，导入后请妥善保存或删除，不要发到公开聊天或截图里。
+
+### 3.2 从本机已有链接准备 Windows 文件
+
 如果你想少手工操作，推荐直接生成 Windows 一键配置包：
 
 下面这条命令通常在 macOS / Linux / Git Bash / WSL 的仓库根目录执行：
