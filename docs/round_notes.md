@@ -267,6 +267,7 @@ Round 0.6：建立 `subscriptions/` 目录与服务质量评估模板。
 2. 拉取前会远程校验配置存在、可读、JSON 有效且没有占位符。
 3. 拉取后会在本地运行 `scripts/validate_xray_config.sh`，并保存到被 `.gitignore` 忽略的 `configs/server/config.json`。
 4. 如果本地已有配置，脚本会先备份到 `backups/`，避免静默覆盖。
+5. 已改进 Windows 体验：本机缺少 `jq` 时不再中断拉取，会在远端校验通过后保存配置并提示安装 `jq`。
 
 ## 待确认问题
 1. 节点命名规则是否采用“地区-城市-序号”固定格式？

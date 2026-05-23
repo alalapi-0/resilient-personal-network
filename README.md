@@ -426,6 +426,7 @@ bash scripts/fetch_remote_xray_config.sh
 
 拉取后的文件会保存到 `configs/server/config.json`，该文件包含真实密钥并已被 `.gitignore` 忽略。
 如果本地原来已有同名配置，脚本会先备份到 `backups/`。
+如果 Windows 提示缺少 `jq`，新版脚本会在远端校验通过后继续保存；但后续生成客户端配置仍建议安装：`winget install jqlang.jq`。
 
 节点跑通后，建议先做一次远程备份：
 

@@ -105,7 +105,23 @@ scp -P "$SSH_PORT" "$SSH_TARGET:$REMOTE_CONFIG_PATH" "$LOCAL_TMP_FILE"
 chmod 600 "$LOCAL_TMP_FILE"
 
 echo "[info] validating downloaded config..."
-bash scripts/validate_xray_config.sh "$LOCAL_TMP_FILE"
+if [ ! -s "$LOCAL_TMP_FILE" ]; then
+  echo "[error] 下载到本地的配置文件为空，停止写入"
+  exit 1
+fi
+
+if grep -qF '${' "$LOCAL_TMP_FILE"; then
+  echo "[error] 下载到本地的配置仍包含未替换占位符，停止写入"
+  exit 1
+fi
+
+if command -v jq >/dev/null 2>&1; then
+  bash scripts/validate_xray_config.sh "$LOCAL_TMP_FILE"
+else
+  echo "[warn] 本机缺少 jq，跳过本地严格字段校验"
+  echo "[warn] 远端已完成 JSON 和基础字段校验，本次仍会保存配置到本地"
+  echo "[hint] 后续生成客户端配置通常仍需要 jq；Windows 可运行：winget install jqlang.jq"
+fi
 
 mkdir -p "$(dirname "$LOCAL_CONFIG_FILE")"
 mkdir -p "$LOCAL_BACKUP_DIR"

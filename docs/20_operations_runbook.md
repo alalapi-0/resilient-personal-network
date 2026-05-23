@@ -97,12 +97,26 @@ bash scripts/fetch_remote_xray_config.sh
 1. SSH 登录 VPS。
 2. 检查远程 `/usr/local/etc/xray/config.json` 是否存在、可读、JSON 有效、没有占位符。
 3. 把远程配置下载到本地临时文件。
-4. 在本地运行 `scripts/validate_xray_config.sh`。
+4. 如果本机有 `jq`，在本地运行 `scripts/validate_xray_config.sh` 做严格校验。
 5. 如果本地已有 `configs/server/config.json`，先备份到 `backups/`。
 6. 把下载后的配置保存为 `configs/server/config.json`，权限设置为 `600`。
 
 注意：这个文件包含真实 UUID、REALITY 私钥和 shortId。
 `configs/server/config.json` 已被 `.gitignore` 忽略，不要手动提交。
+
+如果 Windows 提示本机缺少 `jq`，新版脚本会在远端校验通过后继续保存配置，但后续生成 sing-box、Shadowrocket、v2rayN 链接仍建议安装 `jq`。
+
+Windows PowerShell 安装方式：
+
+```powershell
+winget install jqlang.jq
+```
+
+安装完成后重新打开 PowerShell 或 Git Bash，再检查：
+
+```powershell
+jq --version
+```
 
 ## 5. 创建远程备份
 
