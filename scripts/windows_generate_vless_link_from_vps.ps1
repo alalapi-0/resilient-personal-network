@@ -84,7 +84,8 @@ try {
   Write-Host "[info] Remote config: $RemoteConfigPath"
 
   $RemoteScript = @'
-set -euo pipefail
+# 远端脚本使用保守的 set -eu，避免某些 SSH/PowerShell 组合下 pipefail 被兼容 shell 误解析。
+set -eu
 
 CFG="${REMOTE_CONFIG_PATH:-/usr/local/etc/xray/config.json}"
 
