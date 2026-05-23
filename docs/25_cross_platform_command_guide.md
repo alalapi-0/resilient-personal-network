@@ -183,6 +183,7 @@ journalctl -u xray -n 100 --no-pager -l
 | PowerShell 阻止脚本执行 | 当前窗口执行策略限制 | 运行 `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` |
 | `bash` 不是内部或外部命令 | Windows 没有可用 Bash | 安装 Git for Windows，或改用 WSL |
 | `ssh` 打开空白文档，没有回显 | Windows 命令优先匹配到了异常的 `C:\Windows\System32\ssh` | 改用 `& "$env:WINDIR\System32\OpenSSH\ssh.exe"`，或运行项目的 Windows 专用 `.ps1` 脚本 |
+| `.ps1` 里中文变乱码并报语法错误 | Windows PowerShell 5.1 按错误编码读取旧脚本 | 删除旧的桌面脚本，使用仓库里的新版 `scripts/windows_generate_vless_link_from_vps.ps1` |
 | 在 VPS 上执行 `bash scripts/...` 找不到文件 | 这些脚本在本机仓库，不在 VPS 当前目录 | 回到本机仓库执行，或先上传相关脚本 |
 
 ## 7. Windows 客户端配置不要跑错脚本

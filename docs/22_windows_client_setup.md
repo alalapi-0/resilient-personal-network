@@ -83,6 +83,9 @@ $env:SSH_PORT="22"
 powershell -ExecutionPolicy Bypass -File .\scripts\windows_generate_vless_link_from_vps.ps1
 ```
 
+不要继续运行桌面上旧的 `make-vless-link.ps1`。如果它出现乱码或语法错误，说明旧文件被 Windows PowerShell 5.1 按错误编码读取了。
+新版 `windows_generate_vless_link_from_vps.ps1` 的可执行提示文本已经改为 ASCII，避免 PowerShell 5.1 解析中文字符串时出错。
+
 这个脚本会做几件事：
 
 1. 显式调用 `C:\Windows\System32\OpenSSH\ssh.exe`，避免 `ssh` 命令被异常同名文件抢占。

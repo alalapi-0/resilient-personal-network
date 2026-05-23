@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 
 function Wait-BeforeExit {
   Write-Host ""
-  Read-Host "按回车键退出"
+  Read-Host "Press Enter to exit"
 }
 
 function Get-OpenSshPath {
@@ -29,7 +29,7 @@ function Get-OpenSshPath {
     return $Candidates
   }
 
-  throw "找不到 Windows OpenSSH ssh.exe。请先安装 OpenSSH Client，或确认 C:\Windows\System32\OpenSSH\ssh.exe 存在。"
+  throw "Windows OpenSSH ssh.exe not found. Install OpenSSH Client or check C:\Windows\System32\OpenSSH\ssh.exe."
 }
 
 function ConvertTo-ShellSingleQuoted {
@@ -41,11 +41,11 @@ function ConvertTo-ShellSingleQuoted {
 try {
   $VpsHost = $env:VPS_HOST
   if (-not $VpsHost) {
-    $VpsHost = Read-Host "请输入 VPS IP 或域名"
+    $VpsHost = Read-Host "Enter VPS IP or domain"
   }
 
   if (-not $VpsHost) {
-    throw "VPS_HOST 不能为空"
+    throw "VPS_HOST is empty"
   }
 
   $SshUser = $env:SSH_USER
@@ -77,11 +77,11 @@ try {
   $SshTarget = "$SshUser@$VpsHost"
   $RemotePrefix = "NODE_HOST=$(ConvertTo-ShellSingleQuoted $VpsHost) NODE_NAME=$(ConvertTo-ShellSingleQuoted $NodeName) REMOTE_CONFIG_PATH=$(ConvertTo-ShellSingleQuoted $RemoteConfigPath) bash -s"
 
-  Write-Host "== 从 VPS 生成 v2rayN 导入链接 =="
-  Write-Host "[info] SSH 程序：$SshExe"
-  Write-Host "[info] 目标 VPS：$SshTarget"
-  Write-Host "[info] SSH 端口：$SshPort"
-  Write-Host "[info] 远程配置：$RemoteConfigPath"
+  Write-Host "== Generate v2rayN link from VPS =="
+  Write-Host "[info] SSH executable: $SshExe"
+  Write-Host "[info] SSH target: $SshTarget"
+  Write-Host "[info] SSH port: $SshPort"
+  Write-Host "[info] Remote config: $RemoteConfigPath"
 
   $RemoteScript = @'
 set -euo pipefail
@@ -116,9 +116,9 @@ printf '\n'
   $Raw = $RemoteScript | & $SshExe -p $SshPort $SshTarget $RemotePrefix 2>&1
 
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "[error] 远程生成失败：" -ForegroundColor Red
+    Write-Host "[error] Remote generation failed:" -ForegroundColor Red
     $Raw
-    throw "远程生成链接失败"
+    throw "Failed to generate link on remote VPS"
   }
 
   $Base64Line = $Raw |
@@ -127,13 +127,13 @@ printf '\n'
 
   if (-not $Base64Line) {
     $Raw
-    throw "没有拿到 base64 链接输出"
+    throw "No base64 link output received"
   }
 
   $Link = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Base64Line))
 
   if (-not $Link.StartsWith("vless://")) {
-    throw "解码后不是 vless:// 链接"
+    throw "Decoded output is not a vless:// link"
   }
 
   try {
@@ -144,18 +144,18 @@ printf '\n'
 
   Set-Content -Path $OutputFile -Value $Link -Encoding ASCII
 
-  Write-Host "[ok] 已复制到剪贴板" -ForegroundColor Green
-  Write-Host "[ok] 已保存到：$OutputFile" -ForegroundColor Green
-  Write-Host "[info] 链接长度：$($Link.Length)"
+  Write-Host "[ok] Copied link to clipboard" -ForegroundColor Green
+  Write-Host "[ok] Saved link to: $OutputFile" -ForegroundColor Green
+  Write-Host "[info] Link length: $($Link.Length)"
 
   if ($Link -match 'pbk=([^&]+)') {
-    Write-Host "[info] PublicKey 长度：$($Matches[1].Length)"
+    Write-Host "[info] PublicKey length: $($Matches[1].Length)"
   }
 
-  Write-Host "[next] 打开 v2rayN，选择：服务器 -> 从剪贴板导入分享链接"
+  Write-Host "[next] Open v2rayN, then import share link from clipboard."
 } catch {
   Write-Host "[error] $($_.Exception.Message)" -ForegroundColor Red
-  Write-Host "[hint] 请只截图错误文字，不要发送 vless-link.txt 的完整内容。"
+  Write-Host "[hint] Screenshot only the error text. Do not share the full vless-link.txt."
   exit 1
 } finally {
   Wait-BeforeExit

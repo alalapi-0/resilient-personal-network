@@ -275,6 +275,7 @@ Round 0.6：建立 `subscriptions/` 目录与服务质量评估模板。
 3. 脚本不要求 Windows 本机安装 `jq`，会在 VPS 上读取 Xray 配置并计算 VLESS + REALITY 分享链接。
 4. 链接会复制到 Windows 剪贴板，并保存到桌面 `vless-link.txt`，但不会在屏幕上打印完整敏感链接。
 5. README、Windows 接入手册、多系统命令说明和 SSH 密钥文档已同步补充该流程。
+6. 已将该脚本的可执行提示文本改为 ASCII，避免 Windows PowerShell 5.1 把 UTF-8 中文字符串读成乱码后产生语法错误。
 
 ## 待确认问题
 1. 节点命名规则是否采用“地区-城市-序号”固定格式？
