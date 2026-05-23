@@ -70,6 +70,9 @@ bash scripts/build_windows_client_bundle.sh
 docs/23_windows_one_click_bundle.md
 ```
 
+如果 `.ps1` 脚本运行后一闪而过，说明你用的是旧包，或 PowerShell 报错后窗口自动关闭。
+请重新生成最新包；新版脚本会在结束时等待你按回车。
+
 如果 `configs/client/shadowrocket_link.txt` 已经是最新的，可以直接运行：
 
 ```bash

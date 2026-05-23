@@ -83,6 +83,9 @@ cat > "$BUNDLE_DIR/README_WINDOWS.md" <<'README'
 
 如果你已经安装 v2rayN，可以跳过第 1 步。
 
+所有 `.ps1` 脚本都会在结束时等待你按回车。
+如果看到红色错误，请把错误文字拍照或复制出来，不要把 `vless-link.txt` 的完整内容发给别人。
+
 ## 为什么不是完全自动写入 v2rayN
 
 v2rayN 的内部配置格式会随版本变化。
@@ -94,25 +97,46 @@ cat > "$BUNDLE_DIR/01-copy-link-and-open-v2rayn.ps1" <<'POWERSHELL'
 # 安全：不会在屏幕上显示完整链接。
 
 $ErrorActionPreference = "Stop"
-$LinkPath = Join-Path $PSScriptRoot "vless-link.txt"
 
-if (-not (Test-Path $LinkPath)) {
-  Write-Host "[error] 找不到 vless-link.txt" -ForegroundColor Red
-  exit 1
+function Wait-BeforeExit {
+  Write-Host ""
+  Read-Host "按回车键退出"
 }
 
-$Link = (Get-Content -Raw -Encoding UTF8 $LinkPath).Trim()
-if (-not $Link.StartsWith("vless://")) {
-  Write-Host "[error] vless-link.txt 不是 vless:// 链接" -ForegroundColor Red
-  exit 1
+try {
+  Write-Host "== 复制 VLESS 链接到剪贴板 =="
+
+  $LinkPath = Join-Path $PSScriptRoot "vless-link.txt"
+  if (-not (Test-Path $LinkPath)) {
+    throw "找不到 vless-link.txt。请确认这个脚本和 vless-link.txt 在同一个解压文件夹里。"
+  }
+
+  $Link = (Get-Content -Raw -Encoding UTF8 $LinkPath).Trim()
+  if (-not $Link.StartsWith("vless://")) {
+    throw "vless-link.txt 不是 vless:// 链接。"
+  }
+
+  try {
+    Set-Clipboard -Value $Link
+  } catch {
+    # 某些精简系统里 Set-Clipboard 不可用，退回到 Windows 自带 clip.exe。
+    $Link | clip.exe
+  }
+
+  Write-Host "[ok] VLESS 链接已复制到剪贴板" -ForegroundColor Green
+  Write-Host "[next] 回到 v2rayN，选择：服务器 -> 从剪贴板导入分享链接"
+  Write-Host "[hint] 导入完成后，建议复制一段普通文字覆盖剪贴板"
+
+  Start-Process "https://github.com/2dust/v2rayN/releases"
+} catch {
+  Write-Host "[error] 脚本执行失败" -ForegroundColor Red
+  Write-Host $_.Exception.Message -ForegroundColor Red
+  Write-Host "[hint] 如果是执行策略问题，可以在当前文件夹地址栏输入 powershell，然后运行："
+  Write-Host "Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass"
+  Write-Host ".\01-copy-link-and-open-v2rayn.ps1"
+} finally {
+  Wait-BeforeExit
 }
-
-Set-Clipboard -Value $Link
-Write-Host "[ok] VLESS 链接已复制到剪贴板" -ForegroundColor Green
-Write-Host "[hint] 在 v2rayN 中选择：服务器 -> 从剪贴板导入分享链接"
-Write-Host "[hint] 导入完成后，建议复制一段普通文字覆盖剪贴板"
-
-Start-Process "https://github.com/2dust/v2rayN/releases"
 POWERSHELL
 
 cat > "$BUNDLE_DIR/02-check-windows-connection.ps1" <<POWERSHELL
@@ -120,51 +144,57 @@ cat > "$BUNDLE_DIR/02-check-windows-connection.ps1" <<POWERSHELL
 # 安全：不会打印完整 VLESS 链接。
 
 \$ErrorActionPreference = "Stop"
-\$LinkPath = Join-Path \$PSScriptRoot "vless-link.txt"
-\$ExpectedExitIP = "$EXPECTED_EXIT_IP"
 
-if (-not (Test-Path \$LinkPath)) {
-  Write-Host "[error] 找不到 vless-link.txt" -ForegroundColor Red
-  exit 1
-}
-
-\$Link = (Get-Content -Raw -Encoding UTF8 \$LinkPath).Trim()
-if (-not \$Link.StartsWith("vless://")) {
-  Write-Host "[error] vless-link.txt 不是 vless:// 链接" -ForegroundColor Red
-  exit 1
+function Wait-BeforeExit {
+  Write-Host ""
+  Read-Host "按回车键退出"
 }
 
 try {
+  \$LinkPath = Join-Path \$PSScriptRoot "vless-link.txt"
+  \$ExpectedExitIP = "$EXPECTED_EXIT_IP"
+
+  if (-not (Test-Path \$LinkPath)) {
+    throw "找不到 vless-link.txt。请确认这个脚本和 vless-link.txt 在同一个解压文件夹里。"
+  }
+
+  \$Link = (Get-Content -Raw -Encoding UTF8 \$LinkPath).Trim()
+  if (-not \$Link.StartsWith("vless://")) {
+    throw "vless-link.txt 不是 vless:// 链接。"
+  }
+
   \$Uri = [System.Uri]\$Link
   \$HostName = \$Uri.Host
   \$Port = \$Uri.Port
-} catch {
-  Write-Host "[error] 无法解析 VLESS 链接" -ForegroundColor Red
-  exit 1
-}
 
-Write-Host "== TCP 端口检查 =="
-\$TcpResult = Test-NetConnection -ComputerName \$HostName -Port \$Port -WarningAction SilentlyContinue
-if (\$TcpResult.TcpTestSucceeded) {
-  Write-Host "[ok] Windows 可以连通节点 TCP 端口" -ForegroundColor Green
-} else {
-  Write-Host "[error] Windows 无法连通节点 TCP 端口" -ForegroundColor Red
-  Write-Host "[hint] 先确认 VPS 防火墙和云厂商防火墙仍允许该端口"
-}
+  Write-Host "== TCP 端口检查 =="
+  \$TcpResult = Test-NetConnection -ComputerName \$HostName -Port \$Port -WarningAction SilentlyContinue
+  if (\$TcpResult.TcpTestSucceeded) {
+    Write-Host "[ok] Windows 可以连通节点 TCP 端口" -ForegroundColor Green
+  } else {
+    Write-Host "[error] Windows 无法连通节点 TCP 端口" -ForegroundColor Red
+    Write-Host "[hint] 先确认 VPS 防火墙和云厂商防火墙仍允许该端口"
+  }
 
-Write-Host ""
-Write-Host "== 公网出口检查 =="
-try {
-  \$CurrentIP = (Invoke-RestMethod -Uri "https://api.ipify.org" -TimeoutSec 10).Trim()
-  Write-Host "[info] 当前公网出口 IP：\$CurrentIP"
-  if (\$ExpectedExitIP -and (\$CurrentIP -eq \$ExpectedExitIP)) {
-    Write-Host "[ok] 当前出口 IP 与预期 VPS IP 一致" -ForegroundColor Green
-  } elseif (\$ExpectedExitIP) {
-    Write-Host "[warn] 当前出口 IP 与预期 VPS IP 不一致" -ForegroundColor Yellow
-    Write-Host "[hint] 如果还没在 v2rayN 启用系统代理，这是正常的；启用后再检查"
+  Write-Host ""
+  Write-Host "== 公网出口检查 =="
+  try {
+    \$CurrentIP = (Invoke-RestMethod -Uri "https://api.ipify.org" -TimeoutSec 10).Trim()
+    Write-Host "[info] 当前公网出口 IP：\$CurrentIP"
+    if (\$ExpectedExitIP -and (\$CurrentIP -eq \$ExpectedExitIP)) {
+      Write-Host "[ok] 当前出口 IP 与预期 VPS IP 一致" -ForegroundColor Green
+    } elseif (\$ExpectedExitIP) {
+      Write-Host "[warn] 当前出口 IP 与预期 VPS IP 不一致" -ForegroundColor Yellow
+      Write-Host "[hint] 如果还没在 v2rayN 启用系统代理，这是正常的；启用后再检查"
+    }
+  } catch {
+    Write-Host "[warn] 未能获取当前公网出口 IP" -ForegroundColor Yellow
   }
 } catch {
-  Write-Host "[warn] 未能获取当前公网出口 IP" -ForegroundColor Yellow
+  Write-Host "[error] 脚本执行失败" -ForegroundColor Red
+  Write-Host \$_.Exception.Message -ForegroundColor Red
+} finally {
+  Wait-BeforeExit
 }
 POWERSHELL
 
@@ -173,36 +203,52 @@ cat > "$BUNDLE_DIR/03-download-v2rayn-latest.ps1" <<'POWERSHELL'
 # 安全：只访问官方 2dust/v2rayN 仓库发布页。
 
 $ErrorActionPreference = "Stop"
-$Headers = @{ "User-Agent" = "resilient-personal-network" }
-$Api = "https://api.github.com/repos/2dust/v2rayN/releases/latest"
-$DownloadRoot = Join-Path $env:USERPROFILE "Downloads"
 
-Write-Host "[info] 正在读取 v2rayN 最新发布信息..."
-$Release = Invoke-RestMethod -Uri $Api -Headers $Headers -TimeoutSec 30
+function Wait-BeforeExit {
+  Write-Host ""
+  Read-Host "按回车键退出"
+}
 
-$Asset = $Release.assets |
-  Where-Object { $_.name -eq "v2rayN-windows-64.zip" } |
-  Select-Object -First 1
+try {
+  $Headers = @{ "User-Agent" = "resilient-personal-network" }
+  $Api = "https://api.github.com/repos/2dust/v2rayN/releases/latest"
+  $DownloadRoot = Join-Path $env:USERPROFILE "Downloads"
 
-if (-not $Asset) {
+  Write-Host "[info] 正在读取 v2rayN 最新发布信息..."
+  $Release = Invoke-RestMethod -Uri $Api -Headers $Headers -TimeoutSec 30
+
   $Asset = $Release.assets |
-    Where-Object { $_.name -like "*windows-64*.zip" -and $_.name -notlike "*desktop*" } |
+    Where-Object { $_.name -eq "v2rayN-windows-64.zip" } |
     Select-Object -First 1
+
+  if (-not $Asset) {
+    $Asset = $Release.assets |
+      Where-Object { $_.name -like "*windows-64*.zip" -and $_.name -notlike "*desktop*" } |
+      Select-Object -First 1
+  }
+
+  if (-not $Asset) {
+    Write-Host "[error] 未找到 Windows x64 zip 发布包，请手动打开官方 Releases 页面" -ForegroundColor Red
+    Start-Process "https://github.com/2dust/v2rayN/releases"
+    return
+  }
+
+  $ZipPath = Join-Path $DownloadRoot $Asset.name
+  Write-Host "[info] 下载文件：$($Asset.name)"
+  Write-Host "[info] 保存位置：$ZipPath"
+  Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $ZipPath -Headers $Headers
+
+  Write-Host "[ok] 已下载到：$ZipPath" -ForegroundColor Green
+  Write-Host "[hint] 请解压 zip 后运行 v2rayN.exe"
+  Start-Process $DownloadRoot
+} catch {
+  Write-Host "[error] 下载脚本执行失败" -ForegroundColor Red
+  Write-Host $_.Exception.Message -ForegroundColor Red
+  Write-Host "[hint] 可以手动打开官方页面下载 v2rayN-windows-64.zip："
+  Write-Host "https://github.com/2dust/v2rayN/releases"
+} finally {
+  Wait-BeforeExit
 }
-
-if (-not $Asset) {
-  Write-Host "[error] 未找到 Windows x64 zip 发布包，请手动打开官方 Releases 页面" -ForegroundColor Red
-  Start-Process "https://github.com/2dust/v2rayN/releases"
-  exit 1
-}
-
-$ZipPath = Join-Path $DownloadRoot $Asset.name
-Write-Host "[info] 下载文件：$($Asset.name)"
-Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $ZipPath -Headers $Headers
-
-Write-Host "[ok] 已下载到：$ZipPath" -ForegroundColor Green
-Write-Host "[hint] 请解压 zip 后运行 v2rayN.exe"
-Start-Process $DownloadRoot
 POWERSHELL
 
 chmod 600 "$BUNDLE_DIR"/*.ps1 "$BUNDLE_DIR"/*.md

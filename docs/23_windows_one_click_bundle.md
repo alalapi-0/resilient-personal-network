@@ -58,6 +58,19 @@ exports/windows-client/windows-vless-client-20260522-120000.zip
 如果 Windows 阻止 PowerShell 脚本运行，可以右键脚本，选择“使用 PowerShell 运行”。
 如果仍被策略拦截，可以手动复制 `vless-link.txt` 中的整行链接，然后在 v2rayN 中导入。
 
+新版配置包中的 `.ps1` 脚本会在结束时等待你按回车。
+如果窗口一闪而过，说明你使用的是旧配置包，请重新生成并传输最新 zip。
+
+如果看到红色错误，先不要截图 `vless-link.txt`，只截图 PowerShell 错误文字。
+如果错误和执行策略有关，可以在当前文件夹地址栏输入 `powershell`，打开窗口后执行：
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\01-copy-link-and-open-v2rayn.ps1
+```
+
+`Scope Process` 只对当前 PowerShell 窗口生效，关闭窗口后自动失效。
+
 ## 5. 为什么不直接自动写入 v2rayN
 
 v2rayN 的内部配置格式会随版本变化。
