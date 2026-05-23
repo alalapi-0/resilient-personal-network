@@ -75,7 +75,6 @@ try {
 
   $SshExe = Get-OpenSshPath
   $SshTarget = "$SshUser@$VpsHost"
-  $RemotePrefix = "NODE_HOST=$(ConvertTo-ShellSingleQuoted $VpsHost) NODE_NAME=$(ConvertTo-ShellSingleQuoted $NodeName) REMOTE_CONFIG_PATH=$(ConvertTo-ShellSingleQuoted $RemoteConfigPath) bash -s"
 
   Write-Host "== Generate v2rayN link from VPS =="
   Write-Host "[info] SSH executable: $SshExe"
@@ -114,7 +113,13 @@ printf '%s' "$LINK" | base64 -w 0
 printf '\n'
 '@
 
-  $Raw = $RemoteScript | & $SshExe -p $SshPort $SshTarget $RemotePrefix 2>&1
+  # 不直接把多行脚本管道传给 ssh.exe，避免 Windows PowerShell 5.1 把换行或编码转换后导致远端 bash 解析失败。
+  $RemoteScriptLf = $RemoteScript -replace "`r`n", "`n" -replace "`r", "`n"
+  $RemoteScriptBase64 = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($RemoteScriptLf))
+  $RemoteDecodeCommand = "printf %s $(ConvertTo-ShellSingleQuoted $RemoteScriptBase64) | base64 -d | bash"
+  $RemoteCommand = "NODE_HOST=$(ConvertTo-ShellSingleQuoted $VpsHost) NODE_NAME=$(ConvertTo-ShellSingleQuoted $NodeName) REMOTE_CONFIG_PATH=$(ConvertTo-ShellSingleQuoted $RemoteConfigPath) bash -lc $(ConvertTo-ShellSingleQuoted $RemoteDecodeCommand)"
+
+  $Raw = & $SshExe -p $SshPort $SshTarget $RemoteCommand 2>&1
 
   if ($LASTEXITCODE -ne 0) {
     Write-Host "[error] Remote generation failed:" -ForegroundColor Red
