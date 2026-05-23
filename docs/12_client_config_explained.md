@@ -10,6 +10,9 @@
 
 模板中只包含占位符，不包含真实 UUID、公钥、shortId 或服务器地址。
 
+本文件中的 `NODE_HOST="..." \`、`VPS_HOST="..." \` 示例均为 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。
+Windows PowerShell 需要改成 `$env:NODE_HOST="..."` 或 `$env:VPS_HOST="..."`，完整说明见 `docs/25_cross_platform_command_guide.md`。
+
 ## 2. 你需要准备哪些真实参数
 
 这些参数来自服务端配置和 Xray 生成命令：

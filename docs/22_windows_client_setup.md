@@ -2,6 +2,9 @@
 
 本文件说明如何在 Windows 电脑上使用当前已经跑通的 VLESS + REALITY 节点。
 
+注意：Windows PowerShell 不能直接使用 `VPS_HOST="..." \` 这种 Bash 多行写法。
+如果要在 PowerShell 中运行仓库里的 `scripts/*.sh`，请使用 `$env:变量名="值"`，完整示例见 `docs/25_cross_platform_command_guide.md`。
+
 ## 1. 先判断：你截图里的客户端不能直接用
 
 你截图中的界面包含这些字段：
@@ -58,7 +61,12 @@ https://github.com/2dust/v2rayN/wiki/Release-files-introduction
 当前项目已经能生成 `vless://...` 分享链接。
 这个链接可以给 Shadowrocket 使用，也可以给 v2rayN 导入。
 
+如果你的目标只是让 Windows 电脑连上现有节点，不需要重新运行 `scripts/vps_init.sh` 或 `scripts/install_xray.sh`。
+那两个脚本是 VPS 服务端初始化和安装脚本，Windows 客户端阶段只需要准备分享链接或一键包。
+
 如果你想少手工操作，推荐直接生成 Windows 一键配置包：
+
+下面这条命令通常在 macOS / Linux / Git Bash / WSL 的仓库根目录执行：
 
 ```bash
 bash scripts/build_windows_client_bundle.sh
@@ -88,6 +96,8 @@ configs/client/windows_vless_link.txt
 注意：这个文件包含真实节点信息，已经被 `.gitignore` 忽略，不要公开分享。
 
 如果你不确定链接是不是最新，先重新生成：
+
+下面是 Bash 写法；PowerShell 写法请看 `docs/25_cross_platform_command_guide.md`：
 
 ```bash
 NODE_HOST="<你的_VPS_IP或域名>" \

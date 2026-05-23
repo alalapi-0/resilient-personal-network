@@ -1,6 +1,6 @@
 # 11 Xray 安装与服务端配置模板
 
-本文件说明 Round 2 的内容：安装 Xray-core，并准备 VLESS + REALITY 服务端配置模板。  
+本文件说明 Round 2 的内容：安装 Xray-core，并准备 VLESS + REALITY 服务端配置模板。
 本轮仍然不把真实 UUID、私钥、域名或客户端链接写进仓库。
 
 ## 1. 本轮会做什么
@@ -10,12 +10,15 @@
 3. 生成配置模板：`templates/xray_server_vless_reality.json.template`。
 4. 说明如何替换占位符、上传配置并启动服务。
 
-默认情况下，安装脚本不会启动 Xray 服务。  
+默认情况下，安装脚本不会启动 Xray 服务。
 原因是服务必须读取真实配置文件 `/usr/local/etc/xray/config.json`，而仓库中只保存模板。
 
 ## 2. 安装 Xray-core
 
 在本机仓库根目录执行：
+
+下面是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。
+如果你在 Windows PowerShell 里操作，请使用 `$env:VPS_HOST="..."` 写法，完整示例见 `docs/25_cross_platform_command_guide.md`。
 
 ```bash
 VPS_HOST="<你的_VPS_IP>" \
@@ -48,7 +51,7 @@ systemctl status xray --no-pager
 cat /opt/resilient-personal-network/logs/xray_install.log
 ```
 
-如果能看到 Xray 版本和安装日志，说明程序安装成功。  
+如果能看到 Xray 版本和安装日志，说明程序安装成功。
 此时服务可能是 `inactive` 或 `failed`，只要还没有上传真实 `config.json`，这是可以接受的。
 
 ## 4. 配置模板字段说明
@@ -135,7 +138,7 @@ templates/xray_server_vless_reality.json.template
 填 REALITY 伪装目标，格式是 `域名:端口`。第一次建议保留模板思路，填 `"www.microsoft.com:443"`。
 
 `"${XRAY_SERVER_NAME}"`：
-填 REALITY serverName，也就是上面 `dest` 的域名部分，不带端口。  
+填 REALITY serverName，也就是上面 `dest` 的域名部分，不带端口。
 如果 `dest` 是 `"www.microsoft.com:443"`，这里就填 `"www.microsoft.com"`。
 
 ## 5. 如何生成 UUID 和 REALITY 密钥
@@ -168,7 +171,7 @@ openssl rand -hex 8
 cp templates/xray_server_vless_reality.json.template configs/server/config.json
 ```
 
-然后用编辑器把 `${...}` 占位符替换成真实值。  
+然后用编辑器把 `${...}` 占位符替换成真实值。
 `configs/server/*.json` 已在 `.gitignore` 中忽略，避免误提交真实配置。
 
 替换完成后，先在本机检查是否还有占位符：
@@ -219,6 +222,8 @@ bash scripts/validate_xray_config.sh configs/server/config.json
 6. 如果 VPS 启用了 UFW，则自动放行配置里的 TCP 监听端口。
 7. 重启 Xray 并显示状态。
 
+下面是 Bash 写法。Windows PowerShell 不要直接复制末尾带 `\` 的多行命令，请参考 `docs/25_cross_platform_command_guide.md`。
+
 ```bash
 VPS_HOST="<你的_VPS_IP>" \
 SSH_USER="root" \
@@ -240,7 +245,7 @@ chmod 640 /usr/local/etc/xray/config.json
 chmod 755 /usr/local/etc/xray
 ```
 
-原因：`xray.service` 默认以 `xray` 用户运行。  
+原因：`xray.service` 默认以 `xray` 用户运行。
 如果配置文件是 `root:root` + `600`，服务进程会读不到配置，并在日志中出现 `permission denied`。
 
 可以用下面的命令确认 `xray` 用户能读取配置：
@@ -251,7 +256,7 @@ su -s /bin/sh -c 'test -r /usr/local/etc/xray/config.json && echo readable' xray
 
 ## 8. 放行 VPS 防火墙端口
 
-Xray 服务启动成功，只代表程序在 VPS 上跑起来了。  
+Xray 服务启动成功，只代表程序在 VPS 上跑起来了。
 如果 VPS 本机防火墙没有放行入站端口，手机仍然会连接超时。
 
 本项目的部署脚本会在发现 UFW 已启用时自动执行等价于下面的动作：

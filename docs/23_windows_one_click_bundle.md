@@ -19,6 +19,9 @@
 
 在本机仓库根目录执行：
 
+下面是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。
+如果你在 Windows PowerShell 里生成配置包，请先看 `docs/25_cross_platform_command_guide.md` 的 `$env:` 写法。
+
 ```bash
 bash scripts/build_windows_client_bundle.sh
 ```
@@ -61,6 +64,9 @@ exports/windows-client/windows-vless-client-20260522-120000.zip
 新版配置包中的 `.ps1` 脚本会在结束时等待你按回车。
 如果窗口一闪而过，说明你使用的是旧配置包，请重新生成并传输最新 zip。
 
+新版 `.ps1` 文件会写入 UTF-8 BOM，尽量避免 Windows PowerShell 5.x 把中文提示显示成乱码。
+如果仍然乱码，但脚本能继续运行，优先看 `[ok]`、`[error]`、下载路径和 v2rayN 界面状态。
+
 如果看到红色错误，先不要截图 `vless-link.txt`，只截图 PowerShell 错误文字。
 如果错误和执行策略有关，可以在当前文件夹地址栏输入 `powershell`，打开窗口后执行：
 
@@ -70,6 +76,9 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 `Scope Process` 只对当前 PowerShell 窗口生效，关闭窗口后自动失效。
+
+如果 PowerShell 中出现 `VPS_HOST=... 无法识别` 之类错误，说明你把 Bash 环境变量写法复制到了 PowerShell。
+Windows 端应使用 `$env:VPS_HOST="..."`，不要使用 `VPS_HOST="..." \`。
 
 ## 5. 为什么不直接自动写入 v2rayN
 

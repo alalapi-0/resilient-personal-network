@@ -1,6 +1,6 @@
 # 10 VPS 初始化说明
 
-本文件说明如何把一台新 VPS 初始化为本项目可管理的节点。  
+本文件说明如何把一台新 VPS 初始化为本项目可管理的节点。
 本轮只做基础系统准备，不安装 Xray-core，也不生成真实代理配置。
 
 ## 1. 本轮会做什么
@@ -29,6 +29,9 @@
 
 在本机仓库根目录执行：
 
+下面是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。
+如果你在 Windows PowerShell 里操作，请使用 `$env:VPS_HOST="..."` 写法，完整示例见 `docs/25_cross_platform_command_guide.md`。
+
 ```bash
 VPS_HOST="<你的_VPS_IP>" \
 SSH_USER="root" \
@@ -51,7 +54,7 @@ bash scripts/vps_init.sh
 1. SSH 私钥本身设置了密码短语。
 2. macOS 钥匙串或系统安全策略要求你确认一次。
 
-这通常不是 VPS 的 root 密码，也不应该写进脚本。  
+这通常不是 VPS 的 root 密码，也不应该写进脚本。
 脚本不会读取、保存或记录这个密码；你只需要按终端提示输入即可。
 
 如果你希望本次会话内不再重复输入私钥密码，可以先运行：
@@ -60,7 +63,7 @@ bash scripts/vps_init.sh
 ssh-add --apple-use-keychain ~/.ssh/id_ed25519
 ```
 
-系统会要求你输入一次私钥密码。成功后，再运行初始化脚本。  
+系统会要求你输入一次私钥密码。成功后，再运行初始化脚本。
 如果你的 macOS 不支持 `--apple-use-keychain`，可以使用：
 
 ```bash
@@ -109,7 +112,7 @@ Get:22 http://security.ubuntu.com/ubuntu jammy-security InRelease
 
 ## 7. 域名暂时没有怎么办
 
-没有域名不影响 Round 1。  
+没有域名不影响 Round 1。
 Round 1 只需要 SSH 能连上 VPS。
 
 后续 Round 2/3 如果使用 VLESS + REALITY，可以先用 IP 做基础连通性测试；如果后续要做更稳定的长期访问，建议准备一个域名，并在 DNS 中添加一条 A 记录指向 VPS IP。

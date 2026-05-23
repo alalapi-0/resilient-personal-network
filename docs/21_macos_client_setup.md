@@ -1,7 +1,10 @@
 # 21 Mac 电脑端 sing-box 接入手册
 
-本文件对应 Round 5。  
+本文件对应 Round 5。
 iPhone 已经完成连接验收，Mac 端不需要重新搭建 VPS，只需要复用同一套 VLESS + REALITY 节点配置。
+
+本文件面向 macOS，命令示例默认使用 Bash/zsh 可执行写法。
+如果你要在 Windows PowerShell 运行同类仓库脚本，请看 `docs/25_cross_platform_command_guide.md`。
 
 ## 1. 本轮任务清单
 
@@ -39,18 +42,18 @@ README 会加入 Mac 端接入入口和 Round 5 验收命令。
 
 ## 2. 推荐客户端
 
-Mac 端优先使用 **sing-box VT**。  
+Mac 端优先使用 **sing-box VT**。
 原因是你在 iPhone 上已经用 sing-box VT 跑通，同一份 `tun` 模式配置可以直接复用到 Mac。
 
-如果你已经在 Mac App Store 安装 sing-box VT，就继续下面步骤。  
+如果你已经在 Mac App Store 安装 sing-box VT，就继续下面步骤。
 如果还没安装，先在 App Store 搜索 `sing-box VT` 并安装。
 
-如果 App Store 没有下载按钮、按钮一直转圈，或者账号确认弹窗卡住，可以先跳过 sing-box VT。  
+如果 App Store 没有下载按钮、按钮一直转圈，或者账号确认弹窗卡住，可以先跳过 sing-box VT。
 你已经安装了 Shadowrocket 的情况下，也可以使用 Shadowrocket 重新导入当前节点。服务端现在已经放行 `443/tcp`，所以 Shadowrocket 之前的超时问题大概率已经消失。
 
 ## 3. 生成 Mac 可用配置
 
-Mac 和 iPhone 可以共用同一个节点配置。  
+Mac 和 iPhone 可以共用同一个节点配置。
 如果 `configs/client/singbox.json` 已经是你刚刚导入 iPhone 的那份，可以不重新生成。
 
 如果需要重新生成，在仓库根目录执行：
@@ -72,7 +75,7 @@ configs/client/singbox.json
 
 ## 4. 导入到 Mac sing-box VT
 
-打开 Mac 上的 sing-box VT，按应用界面选择导入本地配置文件。  
+打开 Mac 上的 sing-box VT，按应用界面选择导入本地配置文件。
 不同版本界面名称可能略有差异，通常会在 `Profiles`、`配置`、`Import`、`从文件导入` 一类入口中。
 
 选择这个文件：
@@ -91,7 +94,7 @@ jp-tokyo-01
 
 ## 5. 启用 VPN Profile
 
-Mac 第一次启用 TUN/VPN 模式时，macOS 可能弹出系统授权。  
+Mac 第一次启用 TUN/VPN 模式时，macOS 可能弹出系统授权。
 请允许 sing-box VT 添加 VPN 配置。
 
 如果没有弹窗，或启用失败，可以检查：
@@ -101,7 +104,7 @@ Mac 第一次启用 TUN/VPN 模式时，macOS 可能弹出系统授权。
 3. 是否存在 sing-box VT 相关 VPN 配置。
 4. 是否已经允许该配置连接。
 
-如果系统提示需要管理员密码，这是 macOS 对 VPN Profile 的正常授权要求。  
+如果系统提示需要管理员密码，这是 macOS 对 VPN Profile 的正常授权要求。
 这个密码不会进入本项目脚本或配置。
 
 ## 6. 启用前检查
@@ -113,7 +116,7 @@ EXPECTED_EXIT_IP="<你的_VPS_IP>" \
 bash scripts/check_macos_singbox.sh
 ```
 
-如果你还没有开启 sing-box，公网出口 IP 不一致是正常的。  
+如果你还没有开启 sing-box，公网出口 IP 不一致是正常的。
 这一步主要确认：
 
 1. `configs/client/singbox.json` 格式正确。
@@ -165,12 +168,12 @@ mixed 模式通常只在本机监听：
 127.0.0.1:2080
 ```
 
-这种模式需要你手动给浏览器或系统设置 HTTP/SOCKS 代理。  
+这种模式需要你手动给浏览器或系统设置 HTTP/SOCKS 代理。
 除非 TUN 模式无法使用，否则不建议作为第一选择。
 
 ## 9. Shadowrocket Mac 备用方案
 
-如果 Mac 上已经安装 Shadowrocket，可以直接重新导入当前节点链接。  
+如果 Mac 上已经安装 Shadowrocket，可以直接重新导入当前节点链接。
 建议不要手动逐项填写，优先使用脚本生成的 `vless://...` 链接，减少 UUID、公钥、shortId 或 SNI 填错的机会。
 
 ### 9.1 重新生成 Shadowrocket 链接
@@ -202,12 +205,12 @@ Mac 上执行：
 bash scripts/copy_shadowrocket_link_macos.sh
 ```
 
-脚本会先校验链接字段，再复制到剪贴板。  
+脚本会先校验链接字段，再复制到剪贴板。
 它不会在终端显示完整 `vless://...` 链接。
 
 ### 9.3 在 Shadowrocket 中导入
 
-打开 Shadowrocket，选择从剪贴板或 URL 导入。  
+打开 Shadowrocket，选择从剪贴板或 URL 导入。
 导入后确认节点类型显示为 VLESS，并在 TLS / REALITY 页面核对：
 
 1. `SNI` 与服务端 `serverNames` 一致。
@@ -227,7 +230,7 @@ https://ipinfo.io
 
 如果出口 IP 显示为 VPS，说明 Mac Shadowrocket 接入成功。
 
-如果 Shadowrocket 仍然连不上，但 sing-box/iPhone 已经可用，优先删除旧节点后重新导入。  
+如果 Shadowrocket 仍然连不上，但 sing-box/iPhone 已经可用，优先删除旧节点后重新导入。
 之前的失败节点可能仍保留旧参数。
 
 ## 10. iPhone 和 Mac 共用配置的注意事项
@@ -300,7 +303,7 @@ bash scripts/check_xray_health.sh
 
 ### 11.4 sing-box 提示旧配置弃用
 
-如果看到 `legacy special outbounds` 之类提示，说明导入的是旧配置。  
+如果看到 `legacy special outbounds` 之类提示，说明导入的是旧配置。
 重新执行：
 
 ```bash

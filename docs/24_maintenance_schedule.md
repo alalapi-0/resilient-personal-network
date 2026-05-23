@@ -5,6 +5,9 @@
 结论：
 稳定节点不需要频繁折腾配置，但需要有节奏地做健康检查、备份、安全更新和续费检查。
 
+本文件里的定期检查命令是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。
+Windows PowerShell 请看 `docs/25_cross_platform_command_guide.md`，不要直接复制末尾带 `\` 的多行命令。
+
 ## 1. 不建议频繁改什么
 
 如果节点稳定，不建议频繁改这些内容：

@@ -82,9 +82,25 @@ cat > "$BUNDLE_DIR/README_WINDOWS.md" <<'README'
 7. 运行 `02-check-windows-connection.ps1` 检查连接状态。
 
 如果你已经安装 v2rayN，可以跳过第 1 步。
+下载脚本默认把 zip 保存到当前 Windows 用户的 `Downloads` 文件夹。
 
 所有 `.ps1` 脚本都会在结束时等待你按回车。
 如果看到红色错误，请把错误文字拍照或复制出来，不要把 `vless-link.txt` 的完整内容发给别人。
+
+## PowerShell 和 Bash 命令不要混用
+
+本包里的 `.ps1` 是 Windows PowerShell 脚本，直接在 Windows 上运行。
+如果你还需要在 Windows PowerShell 里运行仓库根目录下的 `scripts/*.sh`，环境变量要写成：
+
+```powershell
+$env:VPS_HOST="<你的_VPS_IP>"
+$env:SSH_USER="root"
+$env:SSH_PORT="22"
+bash scripts/check_xray_health.sh
+```
+
+不要把 macOS / Linux 里的 `VPS_HOST="..." \` 多行 Bash 写法复制到 PowerShell。
+PowerShell 报 `无法将“VPS_HOST=...”项识别为 cmdlet` 时，就是这个原因。
 
 ## 为什么不是完全自动写入 v2rayN
 
@@ -92,11 +108,15 @@ v2rayN 的内部配置格式会随版本变化。
 为了避免写坏客户端配置，本包只负责复制分享链接、打开官方下载页和做连接检查。导入动作交给 v2rayN 自己完成，更稳。
 README
 
-cat > "$BUNDLE_DIR/01-copy-link-and-open-v2rayn.ps1" <<'POWERSHELL'
+# 给 Windows PowerShell 5.x 写入 UTF-8 BOM，避免中文提示变成乱码。
+printf '\357\273\277' > "$BUNDLE_DIR/01-copy-link-and-open-v2rayn.ps1"
+cat >> "$BUNDLE_DIR/01-copy-link-and-open-v2rayn.ps1" <<'POWERSHELL'
 # 说明：复制 VLESS 链接到 Windows 剪贴板，并打开 v2rayN 发布页面。
 # 安全：不会在屏幕上显示完整链接。
 
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Wait-BeforeExit {
   Write-Host ""
@@ -139,11 +159,15 @@ try {
 }
 POWERSHELL
 
-cat > "$BUNDLE_DIR/02-check-windows-connection.ps1" <<POWERSHELL
+# 给 Windows PowerShell 5.x 写入 UTF-8 BOM，避免中文提示变成乱码。
+printf '\357\273\277' > "$BUNDLE_DIR/02-check-windows-connection.ps1"
+cat >> "$BUNDLE_DIR/02-check-windows-connection.ps1" <<POWERSHELL
 # 说明：检查 Windows 到节点端口是否连通，并检查当前公网出口 IP。
 # 安全：不会打印完整 VLESS 链接。
 
 \$ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+\$OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Wait-BeforeExit {
   Write-Host ""
@@ -198,11 +222,15 @@ try {
 }
 POWERSHELL
 
-cat > "$BUNDLE_DIR/03-download-v2rayn-latest.ps1" <<'POWERSHELL'
+# 给 Windows PowerShell 5.x 写入 UTF-8 BOM，避免中文提示变成乱码。
+printf '\357\273\277' > "$BUNDLE_DIR/03-download-v2rayn-latest.ps1"
+cat >> "$BUNDLE_DIR/03-download-v2rayn-latest.ps1" <<'POWERSHELL'
 # 说明：从 v2rayN 官方 GitHub Release 下载最新 Windows x64 便携包。
 # 安全：只访问官方 2dust/v2rayN 仓库发布页。
 
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Wait-BeforeExit {
   Write-Host ""

@@ -8,14 +8,16 @@
 本项目强调“工程化管理”，而不是“一次性脚本执行后就不再维护”。
 
 ## 当前阶段
-当前处于 **Round 5（Mac 电脑端接入阶段）**：
+当前处于 **多系统接入与操作说明整理阶段**：
 - 已建立目录结构与基础文档。
 - 已完成 VPS 基础初始化。
 - 已完成 Xray 服务端安装与启动。
 - 已准备 sing-box / Shadowrocket 客户端配置模板。
 - 已完成 iPhone sing-box VT 实机连接验收。
 - 已完成健康检查、远程备份、诊断采集和恢复流程。
-- 正在补齐 Mac 端导入、授权、验证和排障流程。
+- 已补齐 Mac 端导入、授权、验证和排障流程。
+- 已补齐 Windows v2rayN 配置包和 PowerShell 操作说明。
+- 已把 macOS、Windows、Linux/VPS 的命令写法拆分清楚，避免跨系统复制出错。
 
 ## 本项目不做什么
 为了保证后续可控迭代，本轮明确不做以下事情：
@@ -43,6 +45,7 @@ resilient-personal-network/
 │   ├── 22_windows_client_setup.md
 │   ├── 23_windows_one_click_bundle.md
 │   ├── 24_maintenance_schedule.md
+│   ├── 25_cross_platform_command_guide.md
 │   └── round_notes.md
 ├── scripts/
 │   ├── init_project.sh
@@ -105,6 +108,24 @@ bash scripts/snapshot_tree.sh
 cat docs/tree_snapshot.txt
 ```
 
+## 先分清系统和终端
+本项目同时涉及本机仓库、Windows 客户端和 VPS 远程 Linux。不同终端的命令写法不同。
+
+macOS / Linux / Git Bash / WSL 使用 Bash 写法：
+
+```bash
+VPS_HOST="<你的_VPS_IP>" SSH_USER="root" SSH_PORT="22" bash scripts/check_xray_health.sh
+```
+
+Windows PowerShell 使用 `$env:` 写法：
+
+```powershell
+$env:VPS_HOST="<你的_VPS_IP>"; $env:SSH_USER="root"; $env:SSH_PORT="22"; bash scripts/check_xray_health.sh
+```
+
+如果看到 `PS C:\...>`，不要复制 `VPS_HOST="..." \` 这种 Bash 多行写法。
+完整说明请看 `docs/25_cross_platform_command_guide.md`。
+
 ## 如何准备 VPS
 你需要先在云厂商处创建一台 Linux VPS，并确认以下信息：
 
@@ -123,6 +144,8 @@ ssh-add --apple-use-keychain ~/.ssh/id_ed25519
 
 ## VPS 初始化方式
 在仓库根目录执行：
+
+以下是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
 
 ```bash
 VPS_HOST="<你的_VPS_IP>" \
@@ -156,6 +179,8 @@ dig <你的域名>
 
 ## 安装 Xray-core
 在仓库根目录执行：
+
+以下是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
 
 ```bash
 VPS_HOST="<你的_VPS_IP>" \
@@ -191,6 +216,8 @@ scp -P 22 configs/server/config.json root@<你的_VPS_IP>:/usr/local/etc/xray/co
 
 更推荐使用部署脚本自动完成上传、远程备份、权限设置、UFW 端口放行和重启：
 
+以下是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
+
 ```bash
 VPS_HOST="<你的_VPS_IP>" \
 SSH_USER="root" \
@@ -219,6 +246,8 @@ systemctl status xray --no-pager
 ## 客户端配置导入方法
 sing-box 客户端：
 
+以下是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
+
 ```bash
 NODE_HOST="<你的_VPS_IP或域名>" \
 XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
@@ -241,6 +270,8 @@ jq empty configs/client/singbox.json
 Shadowrocket 客户端：
 
 推荐用脚本生成导入链接：
+
+以下是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
 
 ```bash
 NODE_HOST="<你的_VPS_IP或域名>" \
@@ -266,6 +297,8 @@ bash scripts/validate_shadowrocket_link.sh
 Mac 端推荐继续使用 sing-box VT，并复用 `configs/client/singbox.json`。
 
 如果需要重新生成 Mac 可用配置：
+
+以下是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。
 
 ```bash
 NODE_HOST="<你的_VPS_IP或域名>" \
@@ -298,6 +331,10 @@ bash scripts/copy_shadowrocket_link_macos.sh
 ## Windows 电脑端接入
 Windows 上不要使用只有“服务器、端口、密码、加密方式”的 Shadowsocks 配置界面。
 当前节点是 VLESS + REALITY，推荐使用支持 VLESS + REALITY 的客户端，例如 v2rayN。
+
+如果你在 Windows PowerShell 中运行仓库脚本，不要使用 `VPS_HOST="..." \` 这种 Bash 写法。
+PowerShell 环境变量应写成 `$env:变量名="值"`，完整示例见 `docs/25_cross_platform_command_guide.md`。
+如果只是配置 Windows 客户端，不需要重新运行 `vps_init.sh` 或 `install_xray.sh`。
 
 先准备 Windows 可导入链接：
 
@@ -349,12 +386,16 @@ ufw reload
 
 也可以运行完整健康检查：
 
+以下是 Bash 写法；Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
+
 ```bash
 VPS_HOST="<你的_VPS_IP>" SSH_USER="root" SSH_PORT="22" bash scripts/check_xray_health.sh
 ```
 
 ## 稳定性、备份和恢复
 节点跑通后，建议先做一次远程备份：
+
+以下是 Bash 写法；Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
 
 ```bash
 VPS_HOST="<你的_VPS_IP>" \
@@ -368,6 +409,8 @@ bash scripts/backup_remote_xray.sh
 
 如果需要采集排障信息：
 
+以下是 Bash 写法；Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
+
 ```bash
 VPS_HOST="<你的_VPS_IP>" \
 SSH_USER="root" \
@@ -378,6 +421,8 @@ bash scripts/collect_remote_diagnostics.sh
 诊断日志会保存在本机 `logs/`，并做基础脱敏。
 
 如果配置损坏，需要从备份恢复：
+
+以下是 Bash 写法；Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
 
 ```bash
 VPS_HOST="<你的_VPS_IP>" \
@@ -414,7 +459,10 @@ bash scripts/restore_remote_xray_config.sh backups/<你的备份包>.tar.gz
    - 增加节点档案、续费信息、变更日志和设备清单。
 7. **Windows 电脑端接入补充**
    - 说明 Windows 客户端选择、v2rayN 导入方式和 Shadowsocks 客户端不兼容的原因。
-8. **后续轮次：安全加固与故障切换**
+8. **多系统命令写法整理**
+   - 区分 macOS/Linux/Git Bash/WSL、Windows PowerShell、VPS 远程 shell 的命令写法。
+   - 避免把 Bash 环境变量写法复制到 PowerShell。
+9. **后续轮次：安全加固与故障切换**
    - 增加 SSH 加固、多节点备份和故障切换流程。
 
 ## 安全提醒
@@ -434,7 +482,7 @@ cat docs/tree_snapshot.txt
 若命令均成功，且 `docs/tree_snapshot.txt` 可读，则 Round 0 骨架验收通过。
 
 ## Round 1 验收命令
-请按顺序执行：
+请按顺序执行。以下为 Bash 写法，Windows PowerShell 请看 `docs/25_cross_platform_command_guide.md`：
 
 ```bash
 bash scripts/vps_init.sh
@@ -446,7 +494,7 @@ cat /opt/resilient-personal-network/logs/vps_init.log
 若能看到远程目录和初始化日志，则 Round 1 验收通过。
 
 ## Round 2 验收命令
-请按顺序执行：
+请按顺序执行。以下为 Bash 写法，Windows PowerShell 请看 `docs/25_cross_platform_command_guide.md`：
 
 ```bash
 bash scripts/install_xray.sh
@@ -472,7 +520,7 @@ jq empty configs/client/singbox.json
 导入客户端并能连接节点，则 Round 3 初步连接验收通过。
 
 ## Round 4 验收命令
-请按顺序执行：
+请按顺序执行。以下为 Bash 写法，Windows PowerShell 请看 `docs/25_cross_platform_command_guide.md`：
 
 ```bash
 bash -n scripts/*.sh
@@ -485,7 +533,7 @@ bash scripts/snapshot_tree.sh
 若健康检查通过、诊断日志生成、备份包生成，且快照可读，则 Round 4 验收通过。
 
 ## Round 5 验收命令
-请按顺序执行：
+请按顺序执行。以下为 Bash 写法，Windows PowerShell 请看 `docs/25_cross_platform_command_guide.md`：
 
 ```bash
 bash -n scripts/*.sh

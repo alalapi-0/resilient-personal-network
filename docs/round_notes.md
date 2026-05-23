@@ -249,6 +249,13 @@ Round 0.6：建立 `subscriptions/` 目录与服务质量评估模板。
 3. 更新前必须先执行远程备份。
 4. 无泄露迹象时，不需要频繁轮换 UUID、REALITY 密钥和 shortId。
 
+## 多系统操作说明整理
+1. 新增 `docs/25_cross_platform_command_guide.md`，集中说明 macOS / Linux / Git Bash / WSL 与 Windows PowerShell 的命令差异。
+2. 更新 `README.md`，在项目入口处明确 Bash 写法和 PowerShell `$env:` 写法。
+3. 更新 VPS 初始化、Xray 安装、客户端配置、运维、Mac、Windows 和维护计划文档，标明命令适用系统。
+4. 更新 Windows 一键包生成脚本，生成的 PowerShell 脚本会写入 UTF-8 BOM，减少 Windows PowerShell 5.x 中文乱码。
+5. Windows 用户如果只配置客户端，不需要运行 `vps_init.sh` 或 `install_xray.sh`；应使用 v2rayN 导入 `vless://...` 分享链接。
+
 ## 待确认问题
 1. 节点命名规则是否采用“地区-城市-序号”固定格式？
 2. 后续 CLI 倾向 Bash 还是 Python 实现？
