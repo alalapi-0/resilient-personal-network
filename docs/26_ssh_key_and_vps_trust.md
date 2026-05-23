@@ -436,4 +436,5 @@ SSH 请求没有连到 VPS。常见原因：
 2. 确认 VPS 已有这台电脑的公钥。
 3. 手动 SSH 一次，输入 `yes` 完成 `known_hosts` 信任。
 4. 运行 `check_xray_health.sh` 做远程健康检查。
-5. 如果只是 Windows 客户端配置，直接使用 `vless://...` 链接导入 v2rayN，不要重跑 VPS 初始化。
+5. 如果本机缺少 `configs/server/config.json`，运行 `scripts/fetch_remote_xray_config.sh` 从 VPS 拉取当前配置。
+6. 如果只是 Windows 客户端配置，直接使用 `vless://...` 链接导入 v2rayN，不要重跑 VPS 初始化。

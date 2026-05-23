@@ -55,6 +55,7 @@ resilient-personal-network/
 │   ├── install_xray.sh
 │   ├── validate_xray_config.sh
 │   ├── deploy_xray_config.sh
+│   ├── fetch_remote_xray_config.sh
 │   ├── generate_shadowrocket_link.sh
 │   ├── generate_singbox_config.sh
 │   ├── validate_shadowrocket_link.sh
@@ -412,6 +413,20 @@ VPS_HOST="<你的_VPS_IP>" SSH_USER="root" SSH_PORT="22" bash scripts/check_xray
 ```
 
 ## 稳定性、备份和恢复
+如果 VPS 已经配置好，但当前本机缺少 `configs/server/config.json`，可以先从远端拉取当前正在使用的配置：
+
+以下是 Bash 写法；Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
+
+```bash
+VPS_HOST="<你的_VPS_IP>" \
+SSH_USER="root" \
+SSH_PORT="22" \
+bash scripts/fetch_remote_xray_config.sh
+```
+
+拉取后的文件会保存到 `configs/server/config.json`，该文件包含真实密钥并已被 `.gitignore` 忽略。
+如果本地原来已有同名配置，脚本会先备份到 `backups/`。
+
 节点跑通后，建议先做一次远程备份：
 
 以下是 Bash 写法；Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。

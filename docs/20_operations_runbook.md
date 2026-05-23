@@ -13,13 +13,15 @@ Windows PowerShell 请使用 `$env:VPS_HOST="..."` 写法，完整示例见 `doc
 1. `scripts/backup_remote_xray.sh`
 2. `scripts/restore_remote_xray_config.sh`
 3. `scripts/collect_remote_diagnostics.sh`
-4. `docs/20_operations_runbook.md`
+4. `scripts/fetch_remote_xray_config.sh`
+5. `docs/20_operations_runbook.md`
 
 ### 脚本生成
 
 1. 远程备份脚本：备份 VPS 上的 Xray 配置、服务文件、防火墙状态和近期日志。
 2. 远程恢复脚本：从本地备份包恢复 VPS 上的 Xray 配置。
 3. 远程诊断脚本：采集非敏感排障信息到本地 `logs/`。
+4. 远程配置拉取脚本：把 VPS 上当前正在使用的 Xray 配置拉取到本地忽略目录。
 
 ### 文档生成
 
@@ -40,6 +42,7 @@ README 会加入 Round 4 的常用命令入口，方便以后不用翻文档。
 3. 能用 `scripts/check_xray_health.sh` 检查当前节点。
 4. 能用 `scripts/backup_remote_xray.sh` 生成远程和本地备份。
 5. 能用 `scripts/collect_remote_diagnostics.sh` 生成本地诊断日志。
+6. 能用 `scripts/fetch_remote_xray_config.sh` 把远程配置拉取到本地 `configs/server/config.json`。
 
 ## 2. 什么时候需要备份
 
@@ -69,7 +72,39 @@ README 会加入 Round 4 的常用命令入口，方便以后不用翻文档。
 注意：备份包里有真实服务端配置，所以不要发给别人，不要提交到 GitHub。
 本项目已经在 `.gitignore` 中忽略 `backups/*`。
 
-## 4. 创建远程备份
+## 4. 从远程拉取当前配置到本地
+
+如果 VPS 已经配置好，但你当前本机没有 `configs/server/config.json`，可以从远端拉取当前正在使用的 Xray 配置。
+
+适用场景：
+
+1. 新电脑刚同步 GitHub 仓库，本地没有真实配置。
+2. Windows 端想基于当前 VPS 配置重新生成 v2rayN 导入链接。
+3. Mac 端想基于远程配置重新生成 sing-box 或 Shadowrocket 配置。
+4. 需要确认本地配置和远端正在运行的配置一致。
+
+在本机仓库根目录执行：
+
+```bash
+VPS_HOST="<你的_VPS_IP或域名>" \
+SSH_USER="root" \
+SSH_PORT="22" \
+bash scripts/fetch_remote_xray_config.sh
+```
+
+脚本会做这些事：
+
+1. SSH 登录 VPS。
+2. 检查远程 `/usr/local/etc/xray/config.json` 是否存在、可读、JSON 有效、没有占位符。
+3. 把远程配置下载到本地临时文件。
+4. 在本地运行 `scripts/validate_xray_config.sh`。
+5. 如果本地已有 `configs/server/config.json`，先备份到 `backups/`。
+6. 把下载后的配置保存为 `configs/server/config.json`，权限设置为 `600`。
+
+注意：这个文件包含真实 UUID、REALITY 私钥和 shortId。
+`configs/server/config.json` 已被 `.gitignore` 忽略，不要手动提交。
+
+## 5. 创建远程备份
 
 在本机仓库根目录执行：
 
@@ -95,7 +130,7 @@ VPS_HOST="<你的_VPS_IP或域名>" \
 bash scripts/backup_remote_xray.sh
 ```
 
-## 5. 恢复远程配置
+## 6. 恢复远程配置
 
 恢复是高风险操作，只在这些场景使用：
 
@@ -131,7 +166,7 @@ RESTORE
 7. 如果 UFW 已启用，确保配置端口被放行。
 8. 重启 Xray 并显示服务状态。
 
-## 6. 采集远程诊断日志
+## 7. 采集远程诊断日志
 
 如果你向我求助排障，优先运行这个脚本。
 它不会输出完整服务端配置，只会保存端口、监听、防火墙、服务状态和脱敏日志。
@@ -152,7 +187,7 @@ logs/remote-diagnostics-<主机>-<时间>.txt
 `logs/` 已被 `.gitignore` 忽略。
 如果需要发给别人看，仍建议先自己快速扫一眼，确认没有不想公开的信息。
 
-## 7. 健康检查
+## 8. 健康检查
 
 日常检查用：
 
@@ -179,7 +214,7 @@ bash scripts/check_xray_health.sh
 4. 如果 TCP 超时，优先查 UFW 和云厂商防火墙。
 5. 如果 TCP 通但认证失败，再查 UUID、公钥、shortId、SNI、flow。
 
-## 8. 快照
+## 9. 快照
 
 每次完成一轮变更后执行：
 
@@ -195,7 +230,7 @@ docs/tree_snapshot.txt
 
 快照会排除 `configs/server/*.json`、`configs/client/*.json`、`backups/`、`logs/` 等敏感或临时内容。
 
-## 9. Round 4 完成状态
+## 10. Round 4 完成状态
 
 Round 4 完成后，你应该具备三件事：
 

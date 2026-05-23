@@ -262,6 +262,12 @@ Round 0.6：建立 `subscriptions/` 目录与服务质量评估模板。
 3. 明确 SSH 密钥与 Xray / REALITY 密钥不是同一类密钥，避免把服务配置密钥和登录密钥混用。
 4. 更新 README、VPS 初始化文档、跨系统命令文档和术语表，加入 SSH 密钥文档入口。
 
+## 远端配置拉取能力
+1. 新增 `scripts/fetch_remote_xray_config.sh`，用于把 VPS 上当前正在使用的 Xray 配置拉取到本地。
+2. 拉取前会远程校验配置存在、可读、JSON 有效且没有占位符。
+3. 拉取后会在本地运行 `scripts/validate_xray_config.sh`，并保存到被 `.gitignore` 忽略的 `configs/server/config.json`。
+4. 如果本地已有配置，脚本会先备份到 `backups/`，避免静默覆盖。
+
 ## 待确认问题
 1. 节点命名规则是否采用“地区-城市-序号”固定格式？
 2. 后续 CLI 倾向 Bash 还是 Python 实现？
