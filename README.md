@@ -4,7 +4,7 @@
 **resilient-personal-network**（个人网络通道韧性管理仓库）
 
 ## 项目定位
-这是一个长期维护型工程仓库，用于管理个人多节点网络通道的**文档、配置模板、脚本与运维流程**。  
+这是一个长期维护型工程仓库，用于管理个人多节点网络通道的**文档、配置模板、脚本与运维流程**。
 本项目强调“工程化管理”，而不是“一次性脚本执行后就不再维护”。
 
 ## 当前阶段
@@ -40,6 +40,9 @@ resilient-personal-network/
 │   ├── 12_client_config_explained.md
 │   ├── 20_operations_runbook.md
 │   ├── 21_macos_client_setup.md
+│   ├── 22_windows_client_setup.md
+│   ├── 23_windows_one_click_bundle.md
+│   ├── 24_maintenance_schedule.md
 │   └── round_notes.md
 ├── scripts/
 │   ├── init_project.sh
@@ -56,7 +59,9 @@ resilient-personal-network/
 │   ├── restore_remote_xray_config.sh
 │   ├── collect_remote_diagnostics.sh
 │   ├── check_macos_singbox.sh
-│   └── copy_shadowrocket_link_macos.sh
+│   ├── copy_shadowrocket_link_macos.sh
+│   ├── prepare_windows_vless_link.sh
+│   └── build_windows_client_bundle.sh
 ├── configs/
 │   ├── server/
 │   │   └── .gitkeep
@@ -126,7 +131,7 @@ SSH_PORT="22" \
 bash scripts/vps_init.sh
 ```
 
-脚本会在 VPS 上安装基础依赖，并创建 `/opt/resilient-personal-network` 目录结构。  
+脚本会在 VPS 上安装基础依赖，并创建 `/opt/resilient-personal-network` 目录结构。
 详细说明请看 `docs/10_vps_init.md`。
 
 如果卡在 Ubuntu 软件源下载阶段超过 5 分钟没有任何输出，可以按 `Control + C` 停止后重试；脚本已配置 IPv4、超时和重试参数。
@@ -159,7 +164,7 @@ SSH_PORT="22" \
 bash scripts/install_xray.sh
 ```
 
-脚本会在 VPS 上安装 Xray-core，并写入 systemd 服务文件。  
+脚本会在 VPS 上安装 Xray-core，并写入 systemd 服务文件。
 默认不会启动服务，因为真实配置需要先由模板生成。
 
 详细说明请看 `docs/11_install_xray.md`。
@@ -220,7 +225,7 @@ XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
 bash scripts/generate_singbox_config.sh
 ```
 
-默认生成 `tun` 模式，适合 sing-box VT 在 iPhone / iPad / Mac 上作为 VPN Profile 使用。  
+默认生成 `tun` 模式，适合 sing-box VT 在 iPhone / iPad / Mac 上作为 VPN Profile 使用。
 如果 sing-box VT 提示 `legacy special outbounds` 弃用警告，请重新生成并导入最新配置。
 
 生成后检查：
@@ -230,7 +235,7 @@ grep -nF '${' configs/client/singbox.json
 jq empty configs/client/singbox.json
 ```
 
-如果 `grep -nF '${'` 没有输出，才表示占位符替换完毕。  
+如果 `grep -nF '${'` 没有输出，才表示占位符替换完毕。
 `${SINGBOX_MIXED_PORT}` 和 `${NODE_PORT}` 是数字字段，替换时不要加引号。
 
 Shadowrocket 客户端：
@@ -252,7 +257,7 @@ bash scripts/generate_shadowrocket_link.sh
 bash scripts/validate_shadowrocket_link.sh
 ```
 
-导入后进入节点详情，点 `TLS`，确认 `Reality`、`SNI`、`Public Key`、`Short ID`、`Fingerprint` 都已正确显示。  
+导入后进入节点详情，点 `TLS`，确认 `Reality`、`SNI`、`Public Key`、`Short ID`、`Fingerprint` 都已正确显示。
 如果提示“使用中的配置无法删除”，先关闭 Shadowrocket 总开关和 iOS VPN，再删除旧节点。
 
 详细说明请看 `docs/12_client_config_explained.md`。
@@ -278,7 +283,7 @@ EXPECTED_EXIT_IP="<你的_VPS_IP>" \
 bash scripts/check_macos_singbox.sh
 ```
 
-启用前如果出口 IP 不一致是正常的；启用后应看到出口 IP 与 VPS IP 一致。  
+启用前如果出口 IP 不一致是正常的；启用后应看到出口 IP 与 VPS IP 一致。
 详细说明请看 `docs/21_macos_client_setup.md`。
 
 如果 Mac App Store 暂时无法下载 sing-box VT，而你已经安装了 Shadowrocket，可以直接重新导入 Shadowrocket 链接：
@@ -287,8 +292,36 @@ bash scripts/check_macos_singbox.sh
 bash scripts/copy_shadowrocket_link_macos.sh
 ```
 
-脚本会把已校验的 `vless://...` 链接复制到剪贴板，但不会在终端显示完整链接。  
+脚本会把已校验的 `vless://...` 链接复制到剪贴板，但不会在终端显示完整链接。
 然后在 Shadowrocket 中选择从剪贴板或 URL 导入即可。
+
+## Windows 电脑端接入
+Windows 上不要使用只有“服务器、端口、密码、加密方式”的 Shadowsocks 配置界面。
+当前节点是 VLESS + REALITY，推荐使用支持 VLESS + REALITY 的客户端，例如 v2rayN。
+
+先准备 Windows 可导入链接：
+
+```bash
+bash scripts/prepare_windows_vless_link.sh
+```
+
+输出文件：
+
+```text
+configs/client/windows_vless_link.txt
+```
+
+在 Windows v2rayN 中选择从剪贴板导入分享链接，然后启用系统代理。
+详细说明请看 `docs/22_windows_client_setup.md`。
+
+也可以直接生成 Windows 一键配置包：
+
+```bash
+bash scripts/build_windows_client_bundle.sh
+```
+
+生成的 zip 会放在 `exports/windows-client/`，里面包含复制链接、下载 v2rayN、连接检查的 PowerShell 脚本。
+详细说明请看 `docs/23_windows_one_click_bundle.md`。
 
 ## 初次连接检查
 登录 VPS 后确认服务运行：
@@ -330,7 +363,7 @@ SSH_PORT="22" \
 bash scripts/backup_remote_xray.sh
 ```
 
-备份包会保存在 VPS 的 `/opt/resilient-personal-network/backups/`，并默认下载到本机 `backups/`。  
+备份包会保存在 VPS 的 `/opt/resilient-personal-network/backups/`，并默认下载到本机 `backups/`。
 注意：备份包包含真实服务端配置，不要公开分享，也不要提交到 Git。
 
 如果需要采集排障信息：
@@ -355,6 +388,12 @@ bash scripts/restore_remote_xray_config.sh backups/<你的备份包>.tar.gz
 
 详细说明请看 `docs/20_operations_runbook.md`。
 
+## 定期维护建议
+稳定节点不需要频繁改 UUID、REALITY 密钥、shortId、SNI 或端口。
+建议每月做一次备份和健康检查，每 1 到 3 个月查看是否有重要安全更新。
+
+详细维护计划请看 `docs/24_maintenance_schedule.md`。
+
 ## 后续轮次简介
 1. **Round 1：VPS 初始化脚本与文档**
    - 生成 `scripts/vps_init.sh`。
@@ -373,7 +412,9 @@ bash scripts/restore_remote_xray_config.sh backups/<你的备份包>.tar.gz
    - 复用当前节点配置，整理 Mac sing-box VT 导入、启用和验证流程。
 6. **Round 6：节点资产管理**
    - 增加节点档案、续费信息、变更日志和设备清单。
-7. **后续轮次：安全加固与故障切换**
+7. **Windows 电脑端接入补充**
+   - 说明 Windows 客户端选择、v2rayN 导入方式和 Shadowsocks 客户端不兼容的原因。
+8. **后续轮次：安全加固与故障切换**
    - 增加 SSH 加固、多节点备份和故障切换流程。
 
 ## 安全提醒
@@ -414,7 +455,7 @@ ssh -p 22 root@<你的_VPS_IP>
 cat /opt/resilient-personal-network/logs/xray_install.log
 ```
 
-若能看到 Xray 版本和安装日志，则 Round 2 的程序安装部分通过。  
+若能看到 Xray 版本和安装日志，则 Round 2 的程序安装部分通过。
 真实配置上传和服务启动，请按 `docs/11_install_xray.md` 操作。
 
 ## Round 3 验收命令
@@ -426,8 +467,8 @@ grep -nF '${' configs/client/singbox.json
 jq empty configs/client/singbox.json
 ```
 
-注意：复制后需要先替换所有 `${...}` 占位符。  
-替换完成后，`grep` 没有输出且 `jq` 不报错，则客户端配置文件格式通过。  
+注意：复制后需要先替换所有 `${...}` 占位符。
+替换完成后，`grep` 没有输出且 `jq` 不报错，则客户端配置文件格式通过。
 导入客户端并能连接节点，则 Round 3 初步连接验收通过。
 
 ## Round 4 验收命令

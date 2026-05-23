@@ -233,6 +233,22 @@ Round 0.6：建立 `subscriptions/` 目录与服务质量评估模板。
 3. 记录客户端设备清单，但不记录真实密钥。
 4. 增加节点变更日志模板。
 
+## Windows 电脑端接入补充
+1. 已根据 Windows 截图确认：当前界面是 Shadowsocks 类型客户端，只支持服务器、端口、密码和加密方式，不适合当前 VLESS + REALITY 节点。
+2. 新增 `docs/22_windows_client_setup.md`，说明 Windows 上应优先使用支持 VLESS + REALITY 的客户端，例如 v2rayN。
+3. 新增 `scripts/prepare_windows_vless_link.sh`，用于生成 Windows 可导入的 `vless://...` 链接文件，且不在终端打印真实链接。
+4. 更新 `README.md`，加入 Windows 电脑端接入入口。
+5. Windows 端建议通过分享链接导入，避免手动填写 UUID、公钥、shortId、SNI 和 flow。
+6. 新增 `scripts/build_windows_client_bundle.sh`，用于生成 Windows 一键配置包。
+7. 新增 `docs/23_windows_one_click_bundle.md`，说明配置包内容、传输方式和 Windows 端使用步骤。
+8. 配置包输出到 `exports/windows-client/`，该目录已加入 `.gitignore`。
+
+## 稳定节点维护计划
+1. 新增 `docs/24_maintenance_schedule.md`，说明稳定节点不需要频繁改配置。
+2. 建议每周做基础连通检查，每月做远程备份，每 1 到 3 个月检查重要安全更新。
+3. 更新前必须先执行远程备份。
+4. 无泄露迹象时，不需要频繁轮换 UUID、REALITY 密钥和 shortId。
+
 ## 待确认问题
 1. 节点命名规则是否采用“地区-城市-序号”固定格式？
 2. 后续 CLI 倾向 Bash 还是 Python 实现？

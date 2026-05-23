@@ -4,6 +4,7 @@
 *.log
 logs/*
 backups/*
+exports/*
 configs/server/*.json
 configs/client/*.json
 configs/client/*.txt
@@ -15,6 +16,7 @@ docs/tree_snapshot.txt
 
 !logs/.gitkeep
 !backups/.gitkeep
+!exports/.gitkeep
 !configs/server/.gitkeep
 !configs/client/.gitkeep
 !nodes/.gitkeep
