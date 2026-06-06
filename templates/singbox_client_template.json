@@ -82,6 +82,81 @@
       {
         "protocol": "dns",
         "action": "hijack-dns"
+      },
+      {
+        "domain_suffix": [
+          "openai.com",
+          "chatgpt.com",
+          "oaistatic.com",
+          "oaiusercontent.com",
+          "openrouter.ai",
+          "cursor.com",
+          "cursor.sh",
+          "anthropic.com",
+          "claude.ai",
+          "google.com",
+          "googleapis.com",
+          "gstatic.com",
+          "github.com",
+          "githubusercontent.com",
+          "githubassets.com",
+          "githubcopilot.com"
+        ],
+        "outbound": "proxy"
+      },
+      {
+        "domain_suffix": [
+          "weixin.qq.com",
+          "wx.qq.com",
+          "wechat.com",
+          "wechatapp.com",
+          "mp.weixin.qq.com",
+          "mp.weixinbridge.com",
+          "wximg.com",
+          "wxab.cn",
+          "tenpay.com",
+          "wework.com",
+          "tencentgames.com",
+          "qcloud.com",
+          "qcloudcdn.com"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "rule_set": [
+          "geosite-cn",
+          "geoip-cn"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "ip_cidr": [
+          "10.0.0.0/8",
+          "100.64.0.0/10",
+          "127.0.0.0/8",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.168.0.0/16",
+          "fc00::/7",
+          "fe80::/10"
+        ],
+        "outbound": "direct"
+      }
+    ],
+    "rule_set": [
+      {
+        "type": "remote",
+        "tag": "geosite-cn",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs",
+        "download_detour": "proxy"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip-cn",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs",
+        "download_detour": "proxy"
       }
     ],
     "final": "proxy",

@@ -15,16 +15,12 @@ SSH_USER="${SSH_USER:-root}"
 SSH_PORT="${SSH_PORT:-22}"
 REMOTE_PROJECT_DIR="${REMOTE_PROJECT_DIR:-/opt/resilient-personal-network}"
 
-# 若未提供 VPS_HOST，则暂停并要求用户输入。
-if [ -z "$VPS_HOST" ]; then
-  read -r -p "请输入 VPS 公网 IP 或域名（不会写入仓库）： " VPS_HOST
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_BASENAME="vps_init.sh"
+# shellcheck source=lib/require_tty.sh
+source "$SCRIPT_DIR/lib/require_tty.sh"
 
-# 若用户直接回车，说明缺少必要信息，脚本停止。
-if [ -z "$VPS_HOST" ]; then
-  echo "[error] VPS_HOST 不能为空"
-  exit 1
-fi
+require_vps_host
 
 # 展示即将操作的目标，避免误连到其他服务器。
 echo "即将初始化以下 VPS："
@@ -36,13 +32,7 @@ echo
 echo "如果 SSH 私钥设置了密码，系统可能会要求你输入一次本机私钥密码或钥匙串密码。"
 echo "该密码不会被脚本读取、保存或写入日志。"
 echo
-read -r -p "确认继续？输入 yes 后继续： " CONFIRM
-
-# 只有明确输入 yes 才继续，避免误操作。
-if [ "$CONFIRM" != "yes" ]; then
-  echo "[cancelled] user cancelled vps initialization"
-  exit 0
-fi
+require_confirm_yes
 
 # 组装 SSH 目标。
 SSH_TARGET="${SSH_USER}@${VPS_HOST}"

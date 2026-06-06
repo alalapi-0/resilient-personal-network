@@ -20,16 +20,36 @@ echo "== Windows client bundle =="
 # 先确保 Windows VLESS 链接存在且通过校验。
 if [ ! -f "$SOURCE_LINK_FILE" ]; then
   echo "[info] Windows VLESS 链接不存在，尝试自动生成"
-  bash scripts/prepare_windows_vless_link.sh
+  bash scripts/prepare_windows_vless_link.sh || true
 fi
 
 if [ ! -f "$SOURCE_LINK_FILE" ]; then
   echo "[error] 找不到 Windows VLESS 链接文件：$SOURCE_LINK_FILE"
+  echo
+  echo "请先完成以下步骤："
+  echo "  1. 获取或创建 configs/server/config.json（例如从 VPS 拉取）："
+  echo "     VPS_HOST=\"<你的_VPS_IP>\" bash scripts/fetch_remote_xray_config.sh"
+  echo "  2. 准备 NODE_HOST 和 XRAY_REALITY_PUBLIC_KEY，生成 Shadowrocket 链接："
+  echo "     NODE_HOST=\"<你的_VPS_IP>\" XRAY_REALITY_PUBLIC_KEY=\"<公钥>\" bash scripts/generate_shadowrocket_link.sh"
+  echo "  3. 准备 Windows VLESS 链接："
+  echo "     bash scripts/prepare_windows_vless_link.sh"
+  echo "  4. 再运行本脚本："
+  echo "     bash scripts/build_windows_client_bundle.sh"
   exit 1
 fi
 
 if [ ! -f "$SERVER_CONFIG" ]; then
   echo "[error] 找不到服务端配置：$SERVER_CONFIG"
+  echo
+  echo "请先完成以下步骤："
+  echo "  1. 获取或创建 configs/server/config.json（例如从 VPS 拉取）："
+  echo "     VPS_HOST=\"<你的_VPS_IP>\" bash scripts/fetch_remote_xray_config.sh"
+  echo "  2. 准备 NODE_HOST 和 XRAY_REALITY_PUBLIC_KEY，生成 Shadowrocket 链接："
+  echo "     NODE_HOST=\"<你的_VPS_IP>\" XRAY_REALITY_PUBLIC_KEY=\"<公钥>\" bash scripts/generate_shadowrocket_link.sh"
+  echo "  3. 准备 Windows VLESS 链接："
+  echo "     bash scripts/prepare_windows_vless_link.sh"
+  echo "  4. 再运行本脚本："
+  echo "     bash scripts/build_windows_client_bundle.sh"
   exit 1
 fi
 

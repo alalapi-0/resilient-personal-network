@@ -15,14 +15,12 @@ SSH_PORT="${SSH_PORT:-22}"
 REMOTE_CONFIG_PATH="${REMOTE_CONFIG_PATH:-/usr/local/etc/xray/config.json}"
 LOCAL_LOG_DIR="${LOCAL_LOG_DIR:-logs}"
 
-if [ -z "$VPS_HOST" ]; then
-  read -r -p "请输入 VPS 公网 IP 或域名（不会写入仓库）： " VPS_HOST
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_BASENAME="collect_remote_diagnostics.sh"
+# shellcheck source=lib/require_tty.sh
+source "$SCRIPT_DIR/lib/require_tty.sh"
 
-if [ -z "$VPS_HOST" ]; then
-  echo "[error] VPS_HOST 不能为空"
-  exit 1
-fi
+require_vps_host
 
 TIMESTAMP="$(date -u '+%Y%m%d-%H%M%S')"
 SAFE_HOST="$(printf '%s' "$VPS_HOST" | tr -c 'A-Za-z0-9._-' '_')"

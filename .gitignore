@@ -10,6 +10,7 @@ configs/client/*.json
 configs/client/*.txt
 configs/client/*.yaml
 configs/client/*.yml
+configs/client/*.conf
 nodes/*/*.env
 nodes/*/client*.json
 docs/tree_snapshot.txt

@@ -7,6 +7,7 @@
 
 1. `templates/singbox_client_template.json`：sing-box 客户端配置模板。
 2. `templates/client_link_template.txt`：Shadowrocket / 通用 VLESS 导入链接模板。
+3. `templates/shadowrocket_macos_ai_workflow.conf.template`：Shadowrocket macOS AI 工作流分流配置模板。
 
 模板中只包含占位符，不包含真实 UUID、公钥、shortId 或服务器地址。
 
@@ -190,7 +191,7 @@ REALITY shortId。它必须等于服务端 `realitySettings.shortIds` 中的值�
 节点选择器。当前模板只放了一个主节点和 `direct`，以后可以追加备用节点。
 
 `route.final`：
-默认走 `proxy`。这适合初次连接测试，后续可改成更细的分流规则。
+默认走 `proxy`。在默认代理之前，配置会先显式匹配 AI 工作流和 GitHub 走代理，再用 `geosite-cn` / `geoip-cn` 和少量腾讯、微信补充域名直连大陆流量，避免中国流量绕到 VPS 再回中国。
 
 ## 7. 推荐第一次填写值
 
@@ -349,6 +350,23 @@ configs/client/shadowrocket_link.txt
 
 这个文件已被 `.gitignore` 忽略，不会提交到 Git。
 它包含真实节点信息，不要截图或公开发送。
+
+如果你在 macOS Shadowrocket 中需要完整分流配置，而不只是节点导入链接，可以生成：
+
+```bash
+NODE_HOST="<你的_VPS_IP或域名>" \
+XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
+NODE_NAME="jp-tokyo-01" \
+bash scripts/generate_shadowrocket_macos_config.sh
+```
+
+脚本会读取 `configs/server/config.json`，渲染 `templates/shadowrocket_macos_ai_workflow.conf.template`，并输出：
+
+```text
+configs/client/shadowrocket-macos.conf
+```
+
+这个文件包含真实节点信息，已被 `.gitignore` 忽略。模板里只保留占位符和分流策略，可以提交维护。
 
 查看链接：
 

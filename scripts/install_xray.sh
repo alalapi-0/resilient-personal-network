@@ -15,16 +15,12 @@ SSH_PORT="${SSH_PORT:-22}"
 XRAY_VERSION="${XRAY_VERSION:-latest}"
 REMOTE_PROJECT_DIR="${REMOTE_PROJECT_DIR:-/opt/resilient-personal-network}"
 
-# 如果未传入 VPS_HOST，则暂停要求用户输入。
-if [ -z "$VPS_HOST" ]; then
-  read -r -p "请输入 VPS 公网 IP 或域名（不会写入仓库）： " VPS_HOST
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_BASENAME="install_xray.sh"
+# shellcheck source=lib/require_tty.sh
+source "$SCRIPT_DIR/lib/require_tty.sh"
 
-# VPS_HOST 是必要信息，缺失时直接停止。
-if [ -z "$VPS_HOST" ]; then
-  echo "[error] VPS_HOST 不能为空"
-  exit 1
-fi
+require_vps_host
 
 echo "即将在 VPS 上安装 Xray-core："
 echo "  主机：$VPS_HOST"
@@ -35,13 +31,7 @@ echo "  远程项目目录：$REMOTE_PROJECT_DIR"
 echo
 echo "本脚本只安装 Xray 程序和 systemd 服务，不写入真实代理配置，也不会默认启动服务。"
 echo
-read -r -p "确认继续？输入 yes 后继续： " CONFIRM
-
-# 只有明确输入 yes 才继续，避免误操作。
-if [ "$CONFIRM" != "yes" ]; then
-  echo "[cancelled] user cancelled xray installation"
-  exit 0
-fi
+require_confirm_yes
 
 SSH_TARGET="${SSH_USER}@${VPS_HOST}"
 SSH_OPTS=(

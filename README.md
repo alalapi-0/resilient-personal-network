@@ -1,5 +1,7 @@
 # resilient-personal-network
 
+> **说明**：这不是 Web/App 前端项目，没有 `npm run dev` 或本地开发服务器。所有操作通过 Bash 脚本在终端执行；真实配置与密钥保存在本地 `configs/`（已被 `.gitignore` 忽略），不会提交到 Git。
+
 ## 项目名称
 **resilient-personal-network**（个人网络通道韧性管理仓库）
 
@@ -18,6 +20,7 @@
 - 已补齐 Mac 端导入、授权、验证和排障流程。
 - 已补齐 Windows v2rayN 配置包和 PowerShell 操作说明。
 - 已把 macOS、Windows、Linux/VPS 的命令写法拆分清楚，避免跨系统复制出错。
+- 已加入 AI 工作流优先级分流策略：AI / 搜索 / GitHub 显式代理，大陆域名和 IP 直连。
 
 ## 本项目不做什么
 为了保证后续可控迭代，本轮明确不做以下事情：
@@ -47,6 +50,7 @@ resilient-personal-network/
 │   ├── 24_maintenance_schedule.md
 │   ├── 25_cross_platform_command_guide.md
 │   ├── 26_ssh_key_and_vps_trust.md
+│   ├── 28_ai_workflow_priority.md
 │   └── round_notes.md
 ├── scripts/
 │   ├── init_project.sh
@@ -57,6 +61,7 @@ resilient-personal-network/
 │   ├── deploy_xray_config.sh
 │   ├── fetch_remote_xray_config.sh
 │   ├── generate_shadowrocket_link.sh
+│   ├── generate_shadowrocket_macos_config.sh
 │   ├── generate_singbox_config.sh
 │   ├── validate_shadowrocket_link.sh
 │   ├── check_xray_health.sh
@@ -64,6 +69,7 @@ resilient-personal-network/
 │   ├── restore_remote_xray_config.sh
 │   ├── collect_remote_diagnostics.sh
 │   ├── check_macos_singbox.sh
+│   ├── check_shadowrocket_macos.sh
 │   ├── copy_shadowrocket_link_macos.sh
 │   ├── prepare_windows_vless_link.sh
 │   ├── windows_generate_vless_link_from_vps.ps1
@@ -76,6 +82,7 @@ resilient-personal-network/
 ├── templates/
 │   ├── xray_server_vless_reality.json.template
 │   ├── singbox_client_template.json
+│   ├── shadowrocket_macos_ai_workflow.conf.template
 │   ├── client_link_template.txt
 │   └── .gitkeep
 ├── nodes/
@@ -265,6 +272,21 @@ systemctl status xray --no-pager
 ```
 
 ## 客户端配置导入方法
+
+生成 sing-box / Shadowrocket / Windows 客户端配置前，请按顺序准备：
+
+1. 获取 `configs/server/config.json`（例如从 VPS 拉取）：
+
+```bash
+VPS_HOST="<你的_VPS_IP>" bash scripts/fetch_remote_xray_config.sh
+```
+
+2. 准备 `NODE_HOST` 和 `XRAY_REALITY_PUBLIC_KEY`（REALITY 公钥来自 `xray x25519` 输出）。
+
+3. 再运行对应的生成脚本（见下方示例）。
+
+如果缺少服务端配置，生成脚本会打印完整前置步骤和可直接复制的下一条命令。
+
 sing-box 客户端：
 
 以下是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
@@ -276,6 +298,7 @@ bash scripts/generate_singbox_config.sh
 ```
 
 默认生成 `tun` 模式，适合 sing-box VT 在 iPhone / iPad / Mac 上作为 VPN Profile 使用。
+生成的配置内置 AI 工作流优先级分流：OpenAI / ChatGPT、OpenRouter、Cursor、Claude / Anthropic、Google 搜索和 GitHub 显式走代理；大陆域名和大陆 IP 直连，避免中国流量绕到 VPS 再回中国。
 如果 sing-box VT 提示 `legacy special outbounds` 弃用警告，请重新生成并导入最新配置。
 
 生成后检查：
@@ -302,6 +325,17 @@ bash scripts/generate_shadowrocket_link.sh
 ```
 
 然后复制 `configs/client/shadowrocket_link.txt` 里的 `vless://...` 链接，在 Shadowrocket 中从剪贴板或 URL 导入。
+
+如果是在 macOS Shadowrocket 中使用完整分流配置，可以从模板生成本地真实配置：
+
+```bash
+NODE_HOST="<你的_VPS_IP或域名>" \
+XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
+NODE_NAME="jp-tokyo-01" \
+bash scripts/generate_shadowrocket_macos_config.sh
+```
+
+输出文件为 `configs/client/shadowrocket-macos.conf`，该文件包含真实节点信息并已被 `.gitignore` 忽略。模板规则请看 `templates/shadowrocket_macos_ai_workflow.conf.template`。
 
 导入前可以先验证链接字段：
 
@@ -608,3 +642,4 @@ EXPECTED_EXIT_IP="<你的_VPS_IP>" bash scripts/check_macos_singbox.sh
 - 短期建议：优先使用托管订阅恢复 ChatGPT / Claude / YouTube / GitHub 等生产力访问。
 - 中长期建议：保留并持续建设自建节点，作为备用与学习路线。
 - 详细策略请见：`docs/05_managed_provider_strategy.md`。
+- AI 工作流优先级分流策略请见：`docs/28_ai_workflow_priority.md`。

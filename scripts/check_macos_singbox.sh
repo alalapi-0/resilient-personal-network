@@ -12,6 +12,11 @@ set -euo pipefail
 CONFIG_FILE="${CONFIG_FILE:-configs/client/singbox.json}"
 EXPECTED_EXIT_IP="${EXPECTED_EXIT_IP:-}"
 CHECK_PUBLIC_IP="${CHECK_PUBLIC_IP:-yes}"
+NODE_TAG="${NODE_TAG:-}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/check_ai_workflow_domains.sh
+source "$SCRIPT_DIR/lib/check_ai_workflow_domains.sh"
 
 echo "== macOS environment =="
 if [ "$(uname -s)" = "Darwin" ]; then
@@ -48,11 +53,24 @@ jq empty "$CONFIG_FILE" >/dev/null
 echo "[ok] JSON 格式有效"
 
 INBOUND_TYPE="$(jq -r '.inbounds[0].type // empty' "$CONFIG_FILE")"
-NODE_HOST="$(jq -r '.outbounds[] | select(.tag == "node-primary") | .server // empty' "$CONFIG_FILE" | head -n 1)"
-NODE_PORT="$(jq -r '.outbounds[] | select(.tag == "node-primary") | .server_port // empty' "$CONFIG_FILE" | head -n 1)"
-NODE_TYPE="$(jq -r '.outbounds[] | select(.tag == "node-primary") | .type // empty' "$CONFIG_FILE" | head -n 1)"
-TLS_ENABLED="$(jq -r '.outbounds[] | select(.tag == "node-primary") | .tls.enabled // false' "$CONFIG_FILE" | head -n 1)"
-REALITY_ENABLED="$(jq -r '.outbounds[] | select(.tag == "node-primary") | .tls.reality.enabled // false' "$CONFIG_FILE" | head -n 1)"
+
+if [ -z "$NODE_TAG" ]; then
+  NODE_TAG="$(jq -r '[.outbounds[] | select(.type == "vless") | .tag] | first // empty' "$CONFIG_FILE")"
+fi
+
+if [ -z "$NODE_TAG" ]; then
+  echo "[error] 未找到 type=vless 的出站节点"
+  echo "[hint] 可通过 NODE_TAG=\"<出站_tag>\" 指定要检查的节点"
+  exit 1
+fi
+
+echo "[info] 检查出站节点 tag：$NODE_TAG"
+
+NODE_HOST="$(jq -r --arg tag "$NODE_TAG" '.outbounds[] | select(.tag == $tag) | .server // empty' "$CONFIG_FILE" | head -n 1)"
+NODE_PORT="$(jq -r --arg tag "$NODE_TAG" '.outbounds[] | select(.tag == $tag) | .server_port // empty' "$CONFIG_FILE" | head -n 1)"
+NODE_TYPE="$(jq -r --arg tag "$NODE_TAG" '.outbounds[] | select(.tag == $tag) | .type // empty' "$CONFIG_FILE" | head -n 1)"
+TLS_ENABLED="$(jq -r --arg tag "$NODE_TAG" '.outbounds[] | select(.tag == $tag) | .tls.enabled // false' "$CONFIG_FILE" | head -n 1)"
+REALITY_ENABLED="$(jq -r --arg tag "$NODE_TAG" '.outbounds[] | select(.tag == $tag) | .tls.reality.enabled // false' "$CONFIG_FILE" | head -n 1)"
 LEGACY_BLOCK_COUNT="$(jq '[.. | objects | select(.type? == "block")] | length' "$CONFIG_FILE")"
 
 if [ "$INBOUND_TYPE" = "tun" ]; then
@@ -66,7 +84,7 @@ fi
 if [ "$NODE_TYPE" = "vless" ]; then
   echo "[ok] 节点出站类型为 vless"
 else
-  echo "[error] 未找到 node-primary vless 出站"
+  echo "[error] 出站 $NODE_TAG 不是 vless 类型"
   exit 1
 fi
 
@@ -89,6 +107,9 @@ if [ "$LEGACY_BLOCK_COUNT" = "0" ]; then
 else
   echo "[warn] 发现旧版 block 特殊出站，建议重新生成 sing-box 配置"
 fi
+
+echo
+check_singbox_ai_workflow_domains "$CONFIG_FILE" || true
 
 echo
 echo "== tcp port =="

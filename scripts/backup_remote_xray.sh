@@ -17,15 +17,12 @@ REMOTE_CONFIG_PATH="${REMOTE_CONFIG_PATH:-/usr/local/etc/xray/config.json}"
 LOCAL_BACKUP_DIR="${LOCAL_BACKUP_DIR:-backups}"
 DOWNLOAD_BACKUP="${DOWNLOAD_BACKUP:-yes}"
 
-# 如果未传入 VPS_HOST，则暂停要求用户输入。
-if [ -z "$VPS_HOST" ]; then
-  read -r -p "请输入 VPS 公网 IP 或域名（不会写入仓库）： " VPS_HOST
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_BASENAME="backup_remote_xray.sh"
+# shellcheck source=lib/require_tty.sh
+source "$SCRIPT_DIR/lib/require_tty.sh"
 
-if [ -z "$VPS_HOST" ]; then
-  echo "[error] VPS_HOST 不能为空"
-  exit 1
-fi
+require_vps_host
 
 TIMESTAMP="$(date -u '+%Y%m%d-%H%M%S')"
 SAFE_HOST="$(printf '%s' "$VPS_HOST" | tr -c 'A-Za-z0-9._-' '_')"
@@ -43,12 +40,7 @@ echo "  本地备份：$LOCAL_BACKUP_PATH"
 echo
 echo "注意：备份包包含真实服务端配置，请不要公开分享或提交到 Git。"
 echo
-read -r -p "确认继续？输入 yes 后继续： " CONFIRM
-
-if [ "$CONFIRM" != "yes" ]; then
-  echo "[cancelled] user cancelled remote backup"
-  exit 0
-fi
+require_confirm_yes
 
 SSH_TARGET="${SSH_USER}@${VPS_HOST}"
 SSH_OPTS=(
