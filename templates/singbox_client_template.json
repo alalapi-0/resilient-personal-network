@@ -6,19 +6,15 @@
   "dns": {
     "servers": [
       {
+        "type": "https",
         "tag": "cloudflare",
-        "address": "https://1.1.1.1/dns-query",
+        "server": "1.1.1.1",
+        "path": "/dns-query",
         "detour": "proxy"
       },
       {
-        "tag": "local",
-        "address": "local"
-      }
-    ],
-    "rules": [
-      {
-        "outbound": "any",
-        "server": "local"
+        "type": "local",
+        "tag": "local"
       }
     ],
     "final": "cloudflare"
@@ -73,6 +69,7 @@
     }
   ],
   "route": {
+    "default_domain_resolver": "local",
     "rules": [
       {
         "inbound": "tun-in",

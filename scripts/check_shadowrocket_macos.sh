@@ -7,6 +7,8 @@ set -euo pipefail
 CONFIG_FILE="${CONFIG_FILE:-configs/client/shadowrocket-macos.conf}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 # shellcheck source=lib/check_ai_workflow_domains.sh
 source "$SCRIPT_DIR/lib/check_ai_workflow_domains.sh"
 
@@ -25,7 +27,7 @@ else
 fi
 
 echo
-check_shadowrocket_ai_workflow_domains "$CONFIG_FILE" || true
+check_shadowrocket_ai_workflow_domains "$CONFIG_FILE"
 
 echo
 echo "[done] shadowrocket macos check finished"

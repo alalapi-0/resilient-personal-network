@@ -39,22 +39,15 @@ VLESS + REALITY + XTLS Vision
 ## 2. 推荐 Windows 客户端
 
 Windows 端建议使用 **v2rayN**。
-官方 GitHub 仓库说明它是 Windows、Linux、macOS 图形客户端，并支持 Xray 和 sing-box。
-官方发布文件说明中也写明 Windows 10+ 可用，并列出了 `v2rayN-windows-64.zip` 和 `v2rayN-windows-64-desktop.zip`。
 
 官方地址：
 
 ```text
 https://github.com/2dust/v2rayN
 https://github.com/2dust/v2rayN/releases
-https://github.com/2dust/v2rayN/wiki/Release-files-introduction
 ```
 
-下载建议：
-
-1. 普通 Windows 10/11 x64：优先选 `v2rayN-windows-64.zip`。
-2. 如果你想试新版跨平台界面：可选 `v2rayN-windows-64-desktop.zip`。
-3. 不确定时，先用 `v2rayN-windows-64.zip`。
+发布文件名、系统要求和安装方式可能变化。下载时以官方仓库当时的 Release 说明为准，不依据本文猜测具体包名。
 
 ## 3. 准备 Windows 可导入链接
 
@@ -64,9 +57,27 @@ https://github.com/2dust/v2rayN/wiki/Release-files-introduction
 如果你的目标只是让 Windows 电脑连上现有节点，不需要重新运行 `scripts/vps_init.sh` 或 `scripts/install_xray.sh`。
 那两个脚本是 VPS 服务端初始化和安装脚本，Windows 客户端阶段只需要准备分享链接或一键包。
 
-### 3.1 已有 VPS，直接在 Windows 从远程生成链接
+### 3.1 推荐：统一刷新后传入 Windows
 
-如果你的 VPS 已经能跑通手机或 Mac，但 Windows 本机暂时缺少 `jq`，或者 GitHub 下载不稳定，可以先跳过本地配置生成，直接让 VPS 读自己的 Xray 配置并输出 v2rayN 可导入链接。
+在能运行 Bash 的仓库环境中执行统一刷新。Windows PowerShell 写法：
+
+```powershell
+$env:VPS_HOST="<你的_VPS_IP或域名>"
+$env:RUN_BACKUP="no"
+$env:UPDATE_XRAY="no"
+$env:FETCH_REMOTE_CONFIG="yes"
+$env:GENERATE_CLIENTS="yes"
+$env:RUN_HEALTH_CHECK="yes"
+$env:COPY_LINK_TO_CLIPBOARD="no"
+$env:CONFIRM="yes"
+bash scripts/update_node_and_clients.sh
+```
+
+然后通过受控方式把 `configs/client/android_v2rayng_vless_link.txt` 传到 Windows 并导入 v2rayN。它与 iOS、通用链接来自同一次服务端派生。准备文件不会启用 v2rayN 或系统代理。
+
+### 3.2 显式备用：Windows 远端生成脚本
+
+下面的备用脚本会执行远端读取，并把真实链接写入桌面文件和 Windows 剪贴板。它不属于默认安全刷新流程；只有明确需要这些副作用时才运行。
 
 在 Windows PowerShell 中进入仓库根目录，例如：
 
@@ -102,55 +113,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_generate_vless_link_f
 
 注意：桌面的 `vless-link.txt` 包含真实节点信息，导入后请妥善保存或删除，不要发到公开聊天或截图里。
 
-### 3.2 从本机已有链接准备 Windows 文件
+### 3.3 从本机已有链接准备 Windows 文件
 
-如果你想少手工操作，推荐直接生成 Windows 一键配置包：
+优先使用统一刷新生成的 `android_v2rayng_vless_link.txt`；v2rayN 可导入同一个 VLESS + REALITY 链接。不要为了 Windows 单独重新生成一组凭据或只刷新一个链接文件。
 
-下面这条命令通常在 macOS / Linux / Git Bash / WSL 的仓库根目录执行：
-
-```bash
-bash scripts/build_windows_client_bundle.sh
-```
-
-详细说明请看：
-
-```text
-docs/23_windows_one_click_bundle.md
-```
-
-如果 `.ps1` 脚本运行后一闪而过，说明你用的是旧包，或 PowerShell 报错后窗口自动关闭。
-请重新生成最新包；新版脚本会在结束时等待你按回车。
-
-如果 `configs/client/shadowrocket_link.txt` 已经是最新的，可以直接运行：
-
-```bash
-bash scripts/prepare_windows_vless_link.sh
-```
-
-输出文件：
-
-```text
-configs/client/windows_vless_link.txt
-```
-
-注意：这个文件包含真实节点信息，已经被 `.gitignore` 忽略，不要公开分享。
-
-如果你不确定链接是不是最新，先重新生成：
-
-下面是 Bash 写法；PowerShell 写法请看 `docs/25_cross_platform_command_guide.md`：
-
-```bash
-NODE_HOST="<你的_VPS_IP或域名>" \
-XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
-NODE_NAME="jp-tokyo-01" \
-bash scripts/generate_shadowrocket_link.sh
-```
-
-然后再执行：
-
-```bash
-bash scripts/prepare_windows_vless_link.sh
-```
+仓库中的 Windows 一键包属于额外分发方式，可能写入导出目录、桌面或剪贴板。需要这些副作用时再查阅 `docs/23_windows_one_click_bundle.md`，不要把它与默认只准备八个客户端产物的流程混在一起。
 
 ## 4. 在 v2rayN 中导入
 
@@ -165,7 +132,7 @@ bash scripts/prepare_windows_vless_link.sh
 
 操作顺序：
 
-1. 将 `configs/client/windows_vless_link.txt` 里的整行 `vless://...` 链接放到 Windows 剪贴板。
+1. 通过受控方式将 `configs/client/android_v2rayng_vless_link.txt` 的单行链接放到 Windows 剪贴板。
 2. 在 v2rayN 中选择从剪贴板导入分享链接。
 3. 导入后选择该节点。
 4. 启用系统代理。

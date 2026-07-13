@@ -7,7 +7,8 @@
 
 1. `templates/singbox_client_template.json`：sing-box 客户端配置模板。
 2. `templates/client_link_template.txt`：Shadowrocket / 通用 VLESS 导入链接模板。
-3. `templates/shadowrocket_macos_ai_workflow.conf.template`：Shadowrocket macOS AI 工作流分流配置模板。
+3. `templates/shadowrocket_client.conf.template`：通用完整 Shadowrocket 配置模板。
+4. `templates/shadowrocket_macos_ai_workflow.conf.template`：Shadowrocket macOS AI 工作流分流配置模板。
 
 模板中只包含占位符，不包含真实 UUID、公钥、shortId 或服务器地址。
 
@@ -62,36 +63,39 @@ Windows PowerShell 需要改成 `$env:NODE_HOST="..."` 或 `$env:VPS_HOST="..."`
 
 ## 4. sing-box 配置生成
 
-推荐用脚本生成配置，减少手工替换出错。
+日常刷新推荐使用统一入口，而不是逐个手工生成：
 
-前提：
+```bash
+VPS_HOST="<你的_VPS_IP或域名>" \
+RUN_BACKUP="no" \
+UPDATE_XRAY="no" \
+FETCH_REMOTE_CONFIG="yes" \
+GENERATE_CLIENTS="yes" \
+RUN_HEALTH_CHECK="yes" \
+COPY_LINK_TO_CLIPBOARD="no" \
+CONFIRM="yes" \
+bash scripts/update_node_and_clients.sh
+```
 
-1. 本地 `configs/server/config.json` 已通过校验。
-2. 你知道 REALITY 公钥，也就是 `xray x25519` 输出中的 Public key。
-3. VPS 上 Xray 已经是 `active (running)`。
+统一入口从 VPS 活跃配置读取服务端字段并派生 REALITY 公钥，一次生成三个 sing-box JSON、三个链接和两个 Shadowrocket conf，不另造或轮换凭据。默认不会备份、升级、重启、部署或修改本机网络。
 
-在本机仓库根目录执行：
+只有在已经持有可信本地服务端镜像及其正确派生公钥时，才单独运行生成器。例如生成 TUN 配置：
 
 ```bash
 NODE_HOST="<你的_VPS_IP或域名>" \
 XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
+SINGBOX_MODE="tun" \
 bash scripts/generate_singbox_config.sh
 ```
 
-默认会生成 `tun` 模式配置，适合 sing-box VT 在 iPhone / iPad / Mac 上作为 VPN Profile 使用。
-如果你只想在 Mac 上手动设置本机 HTTP/SOCKS 代理，可以改用：
+如需 mixed 配置，显式设置 `SINGBOX_MODE="mixed"` 和不同的 `OUTPUT_FILE`。生成只准备文件，不会启动客户端。
 
-```bash
-SINGBOX_MODE="mixed" \
-NODE_HOST="<你的_VPS_IP或域名>" \
-XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
-bash scripts/generate_singbox_config.sh
-```
-
-脚本会生成：
+统一入口生成：
 
 ```text
 configs/client/singbox.json
+configs/client/macos_singbox.json
+configs/client/macos_singbox_mixed.json
 ```
 
 这个文件已被 `.gitignore` 忽略，不会提交到 Git。
@@ -213,14 +217,7 @@ REALITY shortId。它必须等于服务端 `realitySettings.shortIds` 中的值�
 2. `${XRAY_REALITY_PUBLIC_KEY}`
 3. `${XRAY_REALITY_SHORT_ID}`
 
-如果你忘记保存 public key 或 shortId，不要猜。需要重新生成并同步更新服务端和客户端。
-
-如果只是不确定公钥在哪里，先回忆或查找当时执行 `/usr/local/bin/xray x25519` 的输出记录。
-公钥不能从服务端 `privateKey` 文本里直接“看出来”。如果确实找不到公钥，需要重新生成一对 REALITY 密钥，并同步更新：
-
-1. 服务端 `privateKey`。
-2. 客户端 `public_key` 或 Shadowrocket 链接里的 `pbk`。
-3. 然后重新部署服务端配置并重新生成客户端链接。
+如果你忘记保存 public key 或 shortId，不要猜，也不要因此轮换稳定凭据。统一刷新入口会读取 VPS 活跃配置，并调用 VPS 上现有 Xray 从当前 REALITY 私钥派生公钥；shortId 直接来自同一份活跃配置。只有存在泄露或明确轮换授权时，才变更服务端凭据并重新部署。
 
 ## 8. 多节点如何扩展
 
@@ -253,42 +250,11 @@ Shadowrocket 更适合 iPhone / iPad 上快速导入和日常使用。
 
 ## 10. 如何确认 sing-box VT App 是否买对
 
-sing-box 在 Apple 平台上常见的可用客户端是 `sing-box VT`。
-你截图中的 App 看起来是正确的：
-
-| 检查项 | 应看到的内容 |
-| --- | --- |
-| App 名称 | `sing-box VT` |
-| 开发者 | `VIRAL TECH, INC.` |
-| 分类 | `Utilities` / 工具类 |
-| 支持设备 | Mac、iPad、iPhone、Apple TV |
-| 图标 | 深色方块图标 |
-
-官方 App Store 页面显示 `sing-box VT` 的开发者为 `VIRAL TECH, INC.`，并支持 iPhone、iPad、Mac、Apple TV。
-所以你截图里的这个 App 可以用于本项目。
+商店名称、开发者和支持设备可能随发布信息变化。安装前应从 sing-box 官方文档进入其 Apple 客户端链接，再在 App Store 页面核对发布者；不要仅凭图标、广告位或相似名称判断。本仓库不固定声称某个商店版本或安装方式当前有效。
 
 ## 11. 如何确认 Shadowrocket App 是否买对
 
-官方 App Store 页面应满足以下特征：
-
-| 检查项 | 应看到的内容 |
-| --- | --- |
-| App 名称 | `Shadowrocket` |
-| 开发者 | `Shadow Launch Technology Limited` |
-| 分类 | `Utilities` / 工具类 |
-| 图标 | 白底、蓝紫色火箭 |
-| 价格 | 不同区服价格不同，日区约 `500` 日元是合理范围 |
-
-你的截图里第一项显示：
-
-1. 名称是 `Shadowrocket`。
-2. 开发者显示为 `Shadow Launch Technolo...`。
-3. 图标是蓝紫色火箭。
-4. 按钮是 `開く`，表示已经安装。
-
-这看起来是正确的 Shadowrocket。
-下面的 Trend Micro VPN 是广告，不是本项目要用的客户端。
-下面那个带中文副标题、显示“App 内购买”的 `Shadowrocket-小火箭 VPN...` 不要安装，它不是我们要配置的那个。
+从你信任的官方产品页面进入 App Store，再核对完整应用名和发布者。价格、图标、区服可用性和 UI 都不是稳定的身份依据；不要根据本文中的历史截图描述选择应用。
 
 ## 12. Shadowrocket 参数怎么填
 
@@ -351,36 +317,22 @@ configs/client/shadowrocket_link.txt
 这个文件已被 `.gitignore` 忽略，不会提交到 Git。
 它包含真实节点信息，不要截图或公开发送。
 
-如果你在 macOS Shadowrocket 中需要完整分流配置，而不只是节点导入链接，可以生成：
-
-```bash
-NODE_HOST="<你的_VPS_IP或域名>" \
-XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
-NODE_NAME="jp-tokyo-01" \
-bash scripts/generate_shadowrocket_macos_config.sh
-```
-
-脚本会读取 `configs/server/config.json`，渲染 `templates/shadowrocket_macos_ai_workflow.conf.template`，并输出：
+统一入口还会从两个受版本控制的占位模板生成完整配置：
 
 ```text
-configs/client/shadowrocket-macos.conf
+templates/shadowrocket_client.conf.template
+  -> configs/client/shadowrocket.conf
+templates/shadowrocket_macos_ai_workflow.conf.template
+  -> configs/client/shadowrocket-macos.conf
 ```
 
-这个文件包含真实节点信息，已被 `.gitignore` 忽略。模板里只保留占位符和分流策略，可以提交维护。
+`shadowrocket.conf` 是不含 macOS 本地监听器的通用完整配置；`shadowrocket-macos.conf` 包含本地 HTTP/SOCKS 监听设置。两个运行时文件都包含真实节点信息并被 `.gitignore` 忽略。
 
-查看链接：
-
-```bash
-cat configs/client/shadowrocket_link.txt
-```
-
-然后把整行 `vless://...` 复制到 iPhone。
+不要在录屏、日志或共享终端中打印真实链接。需要导入时，通过受控文件传输或客户端的本地文件/URL 导入入口处理。
 
 ## 14. Shadowrocket 导入方式
 
-打开 `templates/client_link_template.txt`，复制其中的 `vless://...` 链接模板。
-
-如果你已经使用脚本生成了 `configs/client/shadowrocket_link.txt`，直接复制该文件里的真实链接即可。
+不要导入 `templates/client_link_template.txt`；它只有占位符，不能连接。使用统一刷新生成的设备链接文件，并通过本地受控方式交给客户端。
 
 导入步骤：
 
@@ -589,31 +541,15 @@ timeout 20 tcpdump -ni any tcp port 443
 
 不同版本 UI 名称可能略有差异，但核心流程都是：导入 Profile -> 启用 Profile -> 开启代理/VPN。
 
-### 弃用警告是什么意思
+### 配置兼容性警告
 
-如果 sing-box VT 弹出：
-
-```text
-legacy special outbounds 已在 sing-box 1.11.0 中被弃用
-```
-
-这不是 VPS 服务端错误，而是客户端 JSON 使用了旧版 sing-box 配置写法。
-旧模板里包含 `type: "block"` 这种 special outbound，sing-box 官方迁移文档说明它应改成 rule action。
-本项目已更新：
-
-1. 移除旧的 `block` 出站。
-2. 默认生成 `tun` 入站，适合 Apple 平台的 VPN Profile。
-3. 使用 `action: "sniff"` 和 `action: "hijack-dns"`，避免旧写法警告。
-
-看到这个警告时，重新生成并导入配置：
+如果客户端提示旧字段或配置不兼容，不要猜测具体版本边界，也不要启用兼容环境变量绕过。重新运行统一刷新入口，并用实际选中的 sing-box 二进制做只读检查：
 
 ```bash
-NODE_HOST="<你的_VPS_IP或域名>" \
-XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
-bash scripts/generate_singbox_config.sh
+bash scripts/validate_client_artifacts.sh
 ```
 
-然后在 sing-box VT 里删除旧 Profile，重新导入新的 `configs/client/singbox.json`。
+当前模板和生成器使用带类型的 DNS server、有效域名解析器以及 route action；校验通过后，再在 sing-box VT 中重新导入 `configs/client/singbox.json`。导入本身不会自动连接。
 
 ### sing-box 配置检查
 
@@ -776,12 +712,12 @@ nc -vz <你的_VPS_IP> 443
 6. 配置文件泄露：如果真实链接泄露，应重新生成 UUID 和 REALITY 密钥。
 7. `grep` 没检查出占位符：请确认使用的是 `grep -nF '${' configs/client/singbox.json`。
 8. 编辑器把模板标红：未替换数字占位符前会标红，替换成数字后再运行 `jq empty`。
-9. 买错 App：只认 `Shadowrocket` + `Shadow Launch Technology Limited`，不要安装广告位或名字相似的 VPN。
-10. 远程服务未恢复：如果 Xray 是 `failed`，客户端一定连不上，先运行 `scripts/deploy_xray_config.sh` 恢复服务端。
+9. 买错 App：从可信官方产品页面进入商店并核对发布者，不以本文历史截图为准。
+10. 远程服务未恢复：如果 Xray 是 `failed`，先停止客户端刷新并诊断；部署或重启属于远端写操作，必须另行明确授权。
 11. 连通性测试超时：先用 `scripts/validate_shadowrocket_link.sh` 检查链接，再看 VPS 日志里是否出现连接记录。
 12. 只看第一页字段：VLESS 首页看起来“默认”不代表错，REALITY 关键字段在 `TLS` 里面。
 13. 无法删除节点：先关闭 Shadowrocket 总开关和 iOS VPN，再删除。
-14. sing-box 弃用警告：重新生成最新 `tun` 配置，不要继续使用旧 `block` 出站模板。
+14. sing-box 兼容性警告：统一刷新后用实际选择的二进制执行 `validate_client_artifacts.sh`，不要启用兼容绕过。
 
 ## 19. Mac 端怎么用
 
@@ -797,22 +733,17 @@ nc -vz <你的_VPS_IP> 443
 Mac 端连接不是新开一套服务端。
 它仍然连接同一台 VPS，只是客户端从 iPhone 换成 Mac。
 
-## 20. 后续大概还有几个轮次
+## 20. 当前推荐顺序
 
-按当前项目状态，最少还需要 3 个轮次完成可长期维护版本：
-
-1. Round 4：服务端健康检查、端口检查、日志检查脚本。
-2. Round 5：备份与恢复，防止配置改坏后无法回滚。
-3. Round 6：多节点与故障切换，为第二台 VPS 做准备。
-
-如果你只想先能用，当前只差两步：
-
-1. 用 `scripts/deploy_xray_config.sh` 把本地正确服务端配置部署到 VPS，让 Xray 恢复 `active (running)`。
-2. 生成 Shadowrocket 链接并导入手机。
+1. 在不改变 VPS 状态的前提下运行统一刷新入口。
+2. 执行 `bash scripts/validate_client_artifacts.sh`；通过只代表文件已准备好。
+3. 将对应文件导入客户端。
+4. 由用户在客户端中手动连接并验证出口。
+5. 如果只读健康检查失败，停止并诊断；不要把客户端刷新自动扩大为部署、重启、升级或防火墙修改。
 
 ## 21. 本轮不会做什么
 
 1. 不把真实客户端配置提交到 Git。
 2. 不生成公开订阅地址。
 3. 不自动修改手机或电脑系统代理。
-4. 不替你保存真实 UUID、密钥或链接。
+4. 不把本地忽略目录中的真实 UUID、密钥或链接写入受版本控制文件。

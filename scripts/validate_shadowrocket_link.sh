@@ -8,6 +8,10 @@ set -euo pipefail
 # 2) 只输出字段是否匹配；
 # 3) 公钥无法从链接本身证明一定匹配私钥，只做存在性和格式检查。
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
+
 LINK_FILE="${1:-configs/client/shadowrocket_link.txt}"
 CONFIG_FILE="${2:-configs/server/config.json}"
 
@@ -21,7 +25,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
   exit 1
 fi
 
-python3 - "$LINK_FILE" "$CONFIG_FILE" <<'PY'
+python3 - "$LINK_FILE" "$CONFIG_FILE" 2>/dev/null <<'PY'
 import json
 import re
 import sys
@@ -39,13 +43,27 @@ def err(message):
     print(f"[error] {message}")
 
 with open(link_file, "r", encoding="utf-8") as f:
-    link = f.read().strip()
+    raw_link = f.read()
+
+link_lines = raw_link.splitlines()
+if len(link_lines) != 1 or not link_lines[0].strip():
+    err("链接文件必须只包含一个非空行")
+    link = link_lines[0].strip() if link_lines else ""
+else:
+    ok("链接文件为单行")
+    link = link_lines[0].strip()
 
 with open(config_file, "r", encoding="utf-8") as f:
     cfg = json.load(f)
 
 parsed = urlsplit(link)
-query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+query_values = parse_qs(parsed.query, keep_blank_values=True)
+query = {k: v[0] for k, v in query_values.items()}
+
+if all(len(values) == 1 for values in query_values.values()):
+    ok("查询参数没有重复字段")
+else:
+    err("查询参数包含重复字段")
 
 if parsed.scheme != "vless":
     err("链接协议应为 vless://")
@@ -91,10 +109,20 @@ if query.get("security") == "reality":
 else:
     err("security 应为 reality")
 
+if query.get("encryption") == "none":
+    ok("encryption=none")
+else:
+    err("encryption 应为 none")
+
 if query.get("type") == "tcp":
     ok("type=tcp")
 else:
     err("type 应为 tcp")
+
+if query.get("headerType") == "none":
+    ok("headerType=none")
+else:
+    err("headerType 应为 none")
 
 if query.get("flow") == server_flow:
     ok("flow 与服务端配置一致")

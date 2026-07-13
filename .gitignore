@@ -5,12 +5,15 @@
 logs/*
 backups/*
 exports/*
+tools/sing-box/*
 configs/server/*.json
 configs/client/*.json
 configs/client/*.txt
 configs/client/*.yaml
 configs/client/*.yml
 configs/client/*.conf
+configs/server/.*.tmp.*
+configs/client/.*.tmp.*
 nodes/*/*.env
 nodes/*/client*.json
 docs/tree_snapshot.txt
@@ -18,6 +21,7 @@ docs/tree_snapshot.txt
 !logs/.gitkeep
 !backups/.gitkeep
 !exports/.gitkeep
+!tools/sing-box/.gitkeep
 !configs/server/.gitkeep
 !configs/client/.gitkeep
 !nodes/.gitkeep

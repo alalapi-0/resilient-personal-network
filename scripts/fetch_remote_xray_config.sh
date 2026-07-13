@@ -19,47 +19,44 @@ SSH_PORT="${SSH_PORT:-22}"
 REMOTE_CONFIG_PATH="${REMOTE_CONFIG_PATH:-/usr/local/etc/xray/config.json}"
 LOCAL_CONFIG_FILE="${LOCAL_CONFIG_FILE:-configs/server/config.json}"
 LOCAL_BACKUP_DIR="${LOCAL_BACKUP_DIR:-backups}"
+umask 077
 
-# 如果未传入 VPS_HOST，则暂停要求用户输入。
-if [ -z "$VPS_HOST" ]; then
-  read -r -p "请输入 VPS 公网 IP 或域名（不会写入仓库）： " VPS_HOST
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
+SCRIPT_BASENAME="fetch_remote_xray_config.sh"
+# shellcheck source=lib/require_tty.sh
+source "$SCRIPT_DIR/lib/require_tty.sh"
 
-if [ -z "$VPS_HOST" ]; then
-  echo "[error] VPS_HOST 不能为空"
-  exit 1
-fi
+require_vps_host
+configure_ssh_auth_opts
 
 TIMESTAMP="$(date -u '+%Y%m%d-%H%M%S')"
-SAFE_HOST="$(printf '%s' "$VPS_HOST" | tr -c 'A-Za-z0-9._-' '_')"
-LOCAL_TMP_FILE="$(mktemp "${TMPDIR:-/tmp}/xray-config-fetch.XXXXXX.json")"
-LOCAL_BACKUP_FILE="$LOCAL_BACKUP_DIR/local-config-before-fetch-${SAFE_HOST}-${TIMESTAMP}.json"
+LOCAL_TMP_FILE="$(mktemp "${TMPDIR:-/tmp}/xray-config-fetch.XXXXXX")"
+LOCAL_BACKUP_FILE="$LOCAL_BACKUP_DIR/local-config-before-fetch-${TIMESTAMP}.json"
+LOCAL_INSTALL_TMP=""
 
 cleanup() {
   rm -f "$LOCAL_TMP_FILE"
+  if [ -n "$LOCAL_INSTALL_TMP" ]; then
+    rm -f "$LOCAL_INSTALL_TMP"
+  fi
 }
 trap cleanup EXIT
 
 echo "即将从远程 VPS 拉取 Xray 配置："
-echo "  主机：$VPS_HOST"
-echo "  SSH 用户：$SSH_USER"
-echo "  SSH 端口：$SSH_PORT"
-echo "  远程配置：$REMOTE_CONFIG_PATH"
-echo "  本地输出：$LOCAL_CONFIG_FILE"
+echo "  远程读取：已配置"
+echo "  本地敏感镜像：已配置"
 echo
 echo "注意：拉取到本地的 config.json 包含真实 UUID、REALITY 私钥和 shortId。"
 echo "该文件已被 .gitignore 忽略，请不要公开分享或提交到 Git。"
 echo
-read -r -p "确认继续？输入 yes 后继续： " CONFIRM
-
-if [ "$CONFIRM" != "yes" ]; then
-  echo "[cancelled] user cancelled remote config fetch"
-  exit 0
-fi
+require_confirm_yes
 
 SSH_TARGET="${SSH_USER}@${VPS_HOST}"
 SSH_OPTS=(
   -p "$SSH_PORT"
+  "${SSH_AUTH_OPTS[@]}"
   -o BatchMode=no
   -o ConnectTimeout=15
   -o ServerAliveInterval=30
@@ -67,8 +64,8 @@ SSH_OPTS=(
 )
 
 echo "[info] validating remote config before fetch..."
-ssh "${SSH_OPTS[@]}" "$SSH_TARGET" \
-  "REMOTE_CONFIG_PATH='$REMOTE_CONFIG_PATH' bash -s" <<'REMOTE_SCRIPT'
+if ! ssh "${SSH_OPTS[@]}" "$SSH_TARGET" \
+  "REMOTE_CONFIG_PATH='$REMOTE_CONFIG_PATH' bash -s" 2>/dev/null <<'REMOTE_SCRIPT'
 set -euo pipefail
 
 # 说明：以下命令运行在 VPS 上，只检查配置文件，不打印真实内容。
@@ -90,18 +87,29 @@ fi
 
 jq empty "$REMOTE_CONFIG_PATH" >/dev/null
 
-CONFIG_PORT="$(jq -r '.inbounds[0].port // empty' "$REMOTE_CONFIG_PATH")"
-CONFIG_PROTOCOL="$(jq -r '.inbounds[0].protocol // empty' "$REMOTE_CONFIG_PATH")"
-CONFIG_SECURITY="$(jq -r '.inbounds[0].streamSettings.security // empty' "$REMOTE_CONFIG_PATH")"
-
 echo "[remote-ok] config json is valid"
-echo "[remote-info] inbound protocol: ${CONFIG_PROTOCOL:-unknown}"
-echo "[remote-info] inbound security: ${CONFIG_SECURITY:-unknown}"
-echo "[remote-info] inbound port: ${CONFIG_PORT:-unknown}"
+if jq -e '
+  (.inbounds[0].port | type == "number")
+  and (.inbounds[0].protocol == "vless")
+  and (.inbounds[0].streamSettings.security == "reality")
+' "$REMOTE_CONFIG_PATH" >/dev/null; then
+  echo "[remote-ok] required inbound fields are present"
+else
+  echo "[remote-error] required inbound fields are invalid"
+  exit 1
+fi
 REMOTE_SCRIPT
+then
+  echo "[error] 远端配置预检失败"
+  exit 1
+fi
 
 echo "[info] downloading remote config to temporary local file..."
-scp -P "$SSH_PORT" "$SSH_TARGET:$REMOTE_CONFIG_PATH" "$LOCAL_TMP_FILE"
+if ! scp -q -P "$SSH_PORT" "${SSH_AUTH_OPTS[@]}" \
+  "$SSH_TARGET:$REMOTE_CONFIG_PATH" "$LOCAL_TMP_FILE" 2>/dev/null; then
+  echo "[error] 远端配置下载失败"
+  exit 1
+fi
 chmod 600 "$LOCAL_TMP_FILE"
 
 echo "[info] validating downloaded config..."
@@ -120,7 +128,7 @@ if command -v jq >/dev/null 2>&1; then
 else
   echo "[warn] 本机缺少 jq，跳过本地严格字段校验"
   echo "[warn] 远端已完成 JSON 和基础字段校验，本次仍会保存配置到本地"
-  echo "[hint] 后续生成客户端配置通常仍需要 jq；Windows 可运行：winget install jqlang.jq"
+  echo "[hint] 后续生成客户端配置仍需要 jq；请按 jq 官方文档为当前系统安装"
 fi
 
 mkdir -p "$(dirname "$LOCAL_CONFIG_FILE")"
@@ -129,10 +137,15 @@ mkdir -p "$LOCAL_BACKUP_DIR"
 if [ -f "$LOCAL_CONFIG_FILE" ]; then
   cp -a "$LOCAL_CONFIG_FILE" "$LOCAL_BACKUP_FILE"
   chmod 600 "$LOCAL_BACKUP_FILE"
-  echo "[ok] existing local config backed up to $LOCAL_BACKUP_FILE"
+  echo "[ok] existing local config backed up"
 fi
 
-install -m 600 "$LOCAL_TMP_FILE" "$LOCAL_CONFIG_FILE"
-echo "[ok] remote config saved to $LOCAL_CONFIG_FILE"
+LOCAL_CONFIG_DIR="$(dirname "$LOCAL_CONFIG_FILE")"
+LOCAL_CONFIG_NAME="$(basename "$LOCAL_CONFIG_FILE")"
+LOCAL_INSTALL_TMP="$(mktemp "$LOCAL_CONFIG_DIR/.${LOCAL_CONFIG_NAME}.tmp.XXXXXX")"
+install -m 600 "$LOCAL_TMP_FILE" "$LOCAL_INSTALL_TMP"
+mv -f "$LOCAL_INSTALL_TMP" "$LOCAL_CONFIG_FILE"
+LOCAL_INSTALL_TMP=""
+echo "[ok] remote config saved to ignored local mirror"
 echo "[hint] 现在可以基于该文件重新生成 sing-box / Shadowrocket / Windows v2rayN 链接"
 echo "[done] remote xray config fetched"

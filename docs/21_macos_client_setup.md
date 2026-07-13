@@ -46,32 +46,38 @@ Mac 端优先使用 **sing-box VT**。
 原因是你在 iPhone 上已经用 sing-box VT 跑通，同一份 `tun` 模式配置可以直接复用到 Mac。
 
 如果你已经在 Mac App Store 安装 sing-box VT，就继续下面步骤。
-如果还没安装，先在 App Store 搜索 `sing-box VT` 并安装。
+如果还没安装，请从 sing-box 官方文档进入当前 Apple 客户端入口，再核对 App Store 发布者；本文不固定声称某个商店版本或安装方式仍然有效。
 
 如果 App Store 没有下载按钮、按钮一直转圈，或者账号确认弹窗卡住，可以先跳过 sing-box VT。
-你已经安装了 Shadowrocket 的情况下，也可以使用 Shadowrocket 重新导入当前节点。服务端现在已经放行 `443/tcp`，所以 Shadowrocket 之前的超时问题大概率已经消失。
+你已经安装了 Shadowrocket 的情况下，也可以使用同次统一刷新生成的 Shadowrocket 配置；不要根据历史端口状态推断当前一定可连接。
 
 ## 3. 生成 Mac 可用配置
 
-Mac 和 iPhone 可以共用同一个节点配置。
-如果 `configs/client/singbox.json` 已经是你刚刚导入 iPhone 的那份，可以不重新生成。
-
-如果需要重新生成，在仓库根目录执行：
+Mac 和 iPhone 共用同一套服务端凭据，但 GUI 与 CLI 使用不同命名的本地产物。推荐运行统一刷新入口：
 
 ```bash
-NODE_HOST="<你的_VPS_IP或域名>" \
-XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
-SINGBOX_MODE="tun" \
-bash scripts/generate_singbox_config.sh
+VPS_HOST="<你的_VPS_IP或域名>" \
+RUN_BACKUP="no" \
+UPDATE_XRAY="no" \
+FETCH_REMOTE_CONFIG="yes" \
+GENERATE_CLIENTS="yes" \
+RUN_HEALTH_CHECK="yes" \
+COPY_LINK_TO_CLIPBOARD="no" \
+CONFIRM="yes" \
+bash scripts/update_node_and_clients.sh
 ```
 
-生成文件：
+Mac 相关文件：
 
 ```text
 configs/client/singbox.json
+configs/client/macos_singbox.json
+configs/client/macos_singbox_mixed.json
+configs/client/shadowrocket.conf
+configs/client/shadowrocket-macos.conf
 ```
 
-注意：这个文件包含真实节点信息，已经被 `.gitignore` 忽略，不要提交或公开分享。
+`singbox.json` 供图形客户端导入；后两个 macOS sing-box 文件分别供 CLI TUN 和 mixed 使用。准备这些文件不会启动代理。它们包含真实节点信息，已经被 `.gitignore` 忽略，不要提交或公开分享。
 
 ## 4. 导入到 Mac sing-box VT
 
@@ -152,17 +158,13 @@ https://ipinfo.io
 
 默认推荐 `tun` 模式，因为它能接管系统流量，体验更接近 iPhone。
 
-如果 Mac 上 TUN/VPN 授权一直失败，可以临时生成 `mixed` 模式：
+如果 Mac 上 TUN/VPN 授权一直失败，可以使用统一刷新生成的 CLI mixed 配置。先只读校验：
 
 ```bash
-NODE_HOST="<你的_VPS_IP或域名>" \
-XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
-SINGBOX_MODE="mixed" \
-SINGBOX_MIXED_PORT="2080" \
-bash scripts/generate_singbox_config.sh
+bash scripts/check_local_singbox_macos.sh
 ```
 
-mixed 模式通常只在本机监听：
+校验不会连接。先按 `docs/30_macos_local_singbox_backup.md` 选择并设置 `SING_BOX_BIN`；实际启动必须由用户另开终端运行 `"$SING_BOX_BIN" run -c configs/client/macos_singbox_mixed.json`，并在结束时按 `Control + C`。mixed 模式只在本机监听：
 
 ```text
 127.0.0.1:2080
@@ -178,16 +180,7 @@ mixed 模式通常只在本机监听：
 
 ### 9.1 重新生成 Shadowrocket 链接
 
-如果 `configs/client/shadowrocket_link.txt` 已经是最新的，可以跳过这一步。
-
-需要重新生成时，在仓库根目录执行：
-
-```bash
-NODE_HOST="<你的_VPS_IP或域名>" \
-XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
-NODE_NAME="jp-tokyo-01" \
-bash scripts/generate_shadowrocket_link.sh
-```
+使用第 3 节的统一入口刷新，不要只更新链接而保留旧的其他客户端文件。
 
 生成文件：
 
@@ -199,7 +192,7 @@ configs/client/shadowrocket_link.txt
 
 ### 9.2 复制链接到剪贴板
 
-Mac 上执行：
+只有你明确需要把真实链接写入 macOS 剪贴板时才执行：
 
 ```bash
 bash scripts/copy_shadowrocket_link_macos.sh
@@ -303,17 +296,13 @@ bash scripts/check_xray_health.sh
 
 ### 11.4 sing-box 提示旧配置弃用
 
-如果看到 `legacy special outbounds` 之类提示，说明导入的是旧配置。
-重新执行：
+如果客户端提示旧字段或配置不兼容，不要启用兼容绕过。重新运行第 3 节统一刷新，再执行只读检查：
 
 ```bash
-NODE_HOST="<你的_VPS_IP或域名>" \
-XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
-SINGBOX_MODE="tun" \
-bash scripts/generate_singbox_config.sh
+bash scripts/validate_client_artifacts.sh
 ```
 
-然后重新导入。
+检查通过后重新导入；这一步仍不代表已经连接。
 
 ### 11.5 Shadowrocket 重新导入后仍超时
 

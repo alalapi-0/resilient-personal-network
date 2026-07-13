@@ -15,6 +15,8 @@ CHECK_PUBLIC_IP="${CHECK_PUBLIC_IP:-yes}"
 NODE_TAG="${NODE_TAG:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 # shellcheck source=lib/check_ai_workflow_domains.sh
 source "$SCRIPT_DIR/lib/check_ai_workflow_domains.sh"
 
@@ -64,7 +66,7 @@ if [ -z "$NODE_TAG" ]; then
   exit 1
 fi
 
-echo "[info] 检查出站节点 tag：$NODE_TAG"
+echo "[info] 已定位唯一 VLESS 出站节点"
 
 NODE_HOST="$(jq -r --arg tag "$NODE_TAG" '.outbounds[] | select(.tag == $tag) | .server // empty' "$CONFIG_FILE" | head -n 1)"
 NODE_PORT="$(jq -r --arg tag "$NODE_TAG" '.outbounds[] | select(.tag == $tag) | .server_port // empty' "$CONFIG_FILE" | head -n 1)"
@@ -84,7 +86,7 @@ fi
 if [ "$NODE_TYPE" = "vless" ]; then
   echo "[ok] 节点出站类型为 vless"
 else
-  echo "[error] 出站 $NODE_TAG 不是 vless 类型"
+  echo "[error] 选定出站节点不是 vless 类型"
   exit 1
 fi
 
@@ -109,7 +111,7 @@ else
 fi
 
 echo
-check_singbox_ai_workflow_domains "$CONFIG_FILE" || true
+check_singbox_ai_workflow_domains "$CONFIG_FILE"
 
 echo
 echo "== tcp port =="
@@ -128,7 +130,7 @@ if [ "$CHECK_PUBLIC_IP" = "yes" ]; then
   if [ -z "$CURRENT_IP" ]; then
     echo "[warn] 未能获取当前公网出口 IP"
   else
-    echo "[info] 当前公网出口 IP：$CURRENT_IP"
+    echo "[ok] 已获取当前公网出口 IP"
     if [ -n "$EXPECTED_EXIT_IP" ]; then
       if [ "$CURRENT_IP" = "$EXPECTED_EXIT_IP" ]; then
         echo "[ok] 当前出口 IP 与预期 VPS IP 一致"

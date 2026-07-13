@@ -1,14 +1,10 @@
-# Managed placeholder template for the macOS Shadowrocket profile.
+# Managed placeholder template for the portable Shadowrocket profile.
 # Real node values are injected only into ignored runtime output.
 [General]
 bypass-system = true
 skip-proxy = <local>, <private>, localhost, *.local, captive.apple.com, 0.0.0.0/8, 10.0.0.0/8, 17.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16
 dns-server = 223.5.5.5, 119.29.29.29, 1.1.1.1, 8.8.8.8
 enhanced-mode-by-rule = true
-allow-wifi-access = false
-http-listen = 127.0.0.1:6152
-socks5-listen = 127.0.0.1:6153
-loglevel = notify
 ipv6 = true
 
 [Proxy]
@@ -18,7 +14,7 @@ ${NODE_NAME} = vless, ${NODE_HOST}, ${NODE_PORT}, username=${XRAY_UUID}, flow=${
 proxy = select, ${NODE_NAME}, direct
 
 [Rule]
-# AI workflow first: keep production AI tools on the proxy even when other rules change.
+# AI workflow rules precede regional direct rules.
 DOMAIN-SUFFIX,openai.com,proxy
 DOMAIN-SUFFIX,chatgpt.com,proxy
 DOMAIN-SUFFIX,oaistatic.com,proxy
@@ -36,7 +32,6 @@ DOMAIN-SUFFIX,githubusercontent.com,proxy
 DOMAIN-SUFFIX,githubassets.com,proxy
 DOMAIN-SUFFIX,githubcopilot.com,proxy
 
-# Mainland ecosystem should stay direct to avoid China -> VPS -> China loops.
 DOMAIN-SUFFIX,cn,direct
 DOMAIN-SUFFIX,qq.com,direct
 DOMAIN-SUFFIX,tencent.com,direct

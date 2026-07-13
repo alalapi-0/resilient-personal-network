@@ -21,6 +21,7 @@
 - 已补齐 Windows v2rayN 配置包和 PowerShell 操作说明。
 - 已把 macOS、Windows、Linux/VPS 的命令写法拆分清楚，避免跨系统复制出错。
 - 已加入 AI 工作流优先级分流策略：AI / 搜索 / GitHub 显式代理，大陆域名和 IP 直连。
+- 已新增默认安全的统一刷新入口，可从活跃 VPS 配置派生并校验八个客户端产物；备份和升级保持显式关闭。
 
 ## 本项目不做什么
 为了保证后续可控迭代，本轮明确不做以下事情：
@@ -51,6 +52,8 @@ resilient-personal-network/
 │   ├── 25_cross_platform_command_guide.md
 │   ├── 26_ssh_key_and_vps_trust.md
 │   ├── 28_ai_workflow_priority.md
+│   ├── 29_mobile_client_setup.md
+│   ├── 30_macos_local_singbox_backup.md
 │   └── round_notes.md
 ├── scripts/
 │   ├── init_project.sh
@@ -61,13 +64,19 @@ resilient-personal-network/
 │   ├── deploy_xray_config.sh
 │   ├── fetch_remote_xray_config.sh
 │   ├── generate_shadowrocket_link.sh
+│   ├── generate_shadowrocket_config.sh
 │   ├── generate_shadowrocket_macos_config.sh
 │   ├── generate_singbox_config.sh
 │   ├── validate_shadowrocket_link.sh
+│   ├── validate_client_artifacts.sh
+│   ├── test_client_generation.sh
+│   ├── scan_tracked_secrets.sh
 │   ├── check_xray_health.sh
 │   ├── backup_remote_xray.sh
 │   ├── restore_remote_xray_config.sh
 │   ├── collect_remote_diagnostics.sh
+│   ├── update_node_and_clients.sh
+│   ├── check_local_singbox_macos.sh
 │   ├── check_macos_singbox.sh
 │   ├── check_shadowrocket_macos.sh
 │   ├── copy_shadowrocket_link_macos.sh
@@ -82,6 +91,7 @@ resilient-personal-network/
 ├── templates/
 │   ├── xray_server_vless_reality.json.template
 │   ├── singbox_client_template.json
+│   ├── shadowrocket_client.conf.template
 │   ├── shadowrocket_macos_ai_workflow.conf.template
 │   ├── client_link_template.txt
 │   └── .gitkeep
@@ -242,7 +252,7 @@ bash scripts/validate_xray_config.sh configs/server/config.json
 scp -P 22 configs/server/config.json root@<你的_VPS_IP>:/usr/local/etc/xray/config.json
 ```
 
-更推荐使用部署脚本自动完成上传、远程备份、权限设置、UFW 端口放行和重启：
+只有在明确授权的部署窗口，才使用部署脚本执行上传、远程备份、权限设置、UFW 端口放行和重启；这不是客户端刷新步骤：
 
 以下是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。Windows PowerShell 请参考 `docs/25_cross_platform_command_guide.md`。
 
@@ -273,6 +283,81 @@ systemctl status xray --no-pager
 
 ## 客户端配置导入方法
 
+如果 VPS 已经跑通，推荐使用统一刷新入口。下面是 macOS 终端的 Bash/zsh 可执行写法：
+
+```bash
+VPS_HOST="<你的_VPS_IP>" \
+SSH_USER="root" \
+SSH_PORT="22" \
+SSH_AUTH_MODE="publickey" \
+SSH_ASKPASS_MODE="macos" \
+SSH_KEYCHAIN_MODE="macos" \
+RUN_BACKUP="no" \
+UPDATE_XRAY="no" \
+FETCH_REMOTE_CONFIG="yes" \
+GENERATE_CLIENTS="yes" \
+RUN_HEALTH_CHECK="yes" \
+COPY_LINK_TO_CLIPBOARD="no" \
+CONFIRM="yes" \
+bash scripts/update_node_and_clients.sh
+```
+
+Linux / Git Bash / WSL 使用相同的 Bash 环境变量语法，但应设置 `SSH_ASKPASS_MODE="none"`、`SSH_KEYCHAIN_MODE="none"`，并使用当前终端或 `ssh-agent` 完成认证，不要复制 macOS 专用认证值。
+
+该脚本会：
+
+1. 只读拉取 VPS 当前活跃的 Xray 配置到本地忽略目录。
+2. 在 VPS 上从该配置的 REALITY 私钥派生客户端公钥，不另造或轮换凭据。
+3. 在 mode `700` 临时目录中生成并校验全部八个客户端产物。
+4. 校验通过后以 mode `600` 原子替换本地忽略文件。
+5. 执行只读健康检查。
+
+这组显式参数不会远端备份、升级、重启、部署、恢复、修改防火墙或轮换凭据，也不会启动 mixed/TUN、修改系统代理/VPN 或复制链接到剪贴板。`RUN_BACKUP=yes` 和 `UPDATE_XRAY=yes` 都属于另行授权的维护操作，不是客户端刷新的默认步骤。
+
+生成后的八个客户端产物位于：
+
+```text
+configs/client/singbox.json
+configs/client/macos_singbox.json
+configs/client/macos_singbox_mixed.json
+configs/client/shadowrocket_link.txt
+configs/client/ios_shadowrocket_vless_link.txt
+configs/client/android_v2rayng_vless_link.txt
+configs/client/shadowrocket.conf
+configs/client/shadowrocket-macos.conf
+```
+
+`singbox.json` 是通用 TUN/GUI 导入配置；`macos_singbox.json` 和 `macos_singbox_mixed.json` 分别供 macOS CLI 的 TUN 与 mixed 模式使用。`shadowrocket.conf` 是不带 macOS 本地监听器的通用完整 Shadowrocket 配置，`shadowrocket-macos.conf` 是包含 macOS 本地 HTTP/SOCKS 监听设置的版本。三个链接文件内容一致，只按设备用途分别命名。
+
+这些文件包含真实节点信息，已被 `.gitignore` 忽略，不要提交、截图或公开分享。统一只读校验：
+
+```bash
+bash scripts/validate_client_artifacts.sh
+bash scripts/check_local_singbox_macos.sh
+```
+
+校验成功只代表“文件已准备好”，不代表客户端已经连接。实际连接必须在对应 GUI 中启用，或手动运行下文的 CLI 命令。
+
+Windows PowerShell 的等价写法使用 `$env:`，不能复制 Bash 行尾的 `\`：
+
+```powershell
+$env:VPS_HOST="<你的_VPS_IP>"
+$env:SSH_ASKPASS_MODE="none"
+$env:SSH_KEYCHAIN_MODE="none"
+$env:RUN_BACKUP="no"
+$env:UPDATE_XRAY="no"
+$env:FETCH_REMOTE_CONFIG="yes"
+$env:GENERATE_CLIENTS="yes"
+$env:RUN_HEALTH_CHECK="yes"
+$env:COPY_LINK_TO_CLIPBOARD="no"
+$env:CONFIRM="yes"
+bash scripts/update_node_and_clients.sh
+```
+
+### 单独生成某个产物
+
+只有在已经持有可信本地服务端镜像及其派生公钥时，才使用下面的单项生成器。日常刷新优先使用统一入口，避免产物来源和时间不一致。
+
 生成 sing-box / Shadowrocket / Windows 客户端配置前，请按顺序准备：
 
 1. 获取 `configs/server/config.json`（例如从 VPS 拉取）：
@@ -299,7 +384,7 @@ bash scripts/generate_singbox_config.sh
 
 默认生成 `tun` 模式，适合 sing-box VT 在 iPhone / iPad / Mac 上作为 VPN Profile 使用。
 生成的配置内置 AI 工作流优先级分流：OpenAI / ChatGPT、OpenRouter、Cursor、Claude / Anthropic、Google 搜索和 GitHub 显式走代理；大陆域名和大陆 IP 直连，避免中国流量绕到 VPS 再回中国。
-如果 sing-box VT 提示 `legacy special outbounds` 弃用警告，请重新生成并导入最新配置。
+如果 sing-box VT 提示旧字段或配置不兼容，请重新运行统一刷新和 `validate_client_artifacts.sh`，不要启用兼容绕过。
 
 生成后检查：
 
@@ -348,10 +433,21 @@ bash scripts/validate_shadowrocket_link.sh
 
 详细说明请看 `docs/12_client_config_explained.md`。
 
-## Mac 电脑端接入
-Mac 端推荐继续使用 sing-box VT，并复用 `configs/client/singbox.json`。
+Android 手机端：
 
-如果需要重新生成 Mac 可用配置：
+推荐两种方式：
+
+1. 使用支持 sing-box 配置的 Android 客户端，导入 `configs/client/singbox.json`。
+2. 使用 v2rayNG / NekoBox 等支持 VLESS + REALITY 的客户端，导入 `configs/client/android_v2rayng_vless_link.txt` 中的 `vless://...` 分享链接。
+
+如果通过 `scripts/update_node_and_clients.sh` 生成，Android 链接会和 iPhone Shadowrocket 链接保持同一组 UUID、公钥、shortId、SNI 和端口。
+导入后打开客户端连接，再访问 `https://ipinfo.io`，出口 IP 应显示为 VPS。
+详细手机端步骤请看 `docs/29_mobile_client_setup.md`。
+
+## Mac 电脑端接入
+Mac 图形客户端可以导入 `configs/client/singbox.json`；macOS CLI 使用统一刷新生成的 `macos_singbox.json`（TUN）或 `macos_singbox_mixed.json`（mixed）。GUI 导入、CLI 只读检查和实际连接是三个不同步骤。
+
+如果只需要刷新配置，运行上面的统一入口，不必单独连接客户端。下面的单项命令仅用于已有可信本地镜像的高级场景：
 
 以下是 Bash 写法，适用于 macOS / Linux / Git Bash / WSL。
 
@@ -374,7 +470,48 @@ bash scripts/check_macos_singbox.sh
 启用前如果出口 IP 不一致是正常的；启用后应看到出口 IP 与 VPS IP 一致。
 详细说明请看 `docs/21_macos_client_setup.md`。
 
-如果 Mac App Store 暂时无法下载 sing-box VT，而你已经安装了 Shadowrocket，可以直接重新导入 Shadowrocket 链接：
+如果 Mac 上使用的是 sing-box CLI，先做只读检查：
+
+```bash
+bash scripts/check_local_singbox_macos.sh
+```
+
+检查脚本依次使用 `SING_BOX_BIN` 显式路径、`PATH` 中的 `sing-box`、项目内 `tools/sing-box/sing-box` 备用文件。
+不确定 CLI 位置时可运行 `command -v sing-box`；没有输出就表示当前 `PATH` 中没有它，不要假定 Homebrew 已安装。
+自定义安装可显式设置：
+
+```bash
+export SING_BOX_BIN="/absolute/path/to/sing-box"
+```
+
+如果 CLI 已在 `PATH` 中，保存检测到的路径；否则选用项目内备用文件：
+
+```bash
+if [ -z "${SING_BOX_BIN:-}" ]; then
+  if command -v sing-box >/dev/null 2>&1; then
+    export SING_BOX_BIN="$(command -v sing-box)"
+  else
+    export SING_BOX_BIN="$PWD/tools/sing-box/sing-box"
+  fi
+fi
+```
+
+低风险 mixed 连接（只开本地 `127.0.0.1:2080` 代理，不自动接管系统流量）：
+
+```bash
+"$SING_BOX_BIN" run -c configs/client/macos_singbox_mixed.json
+```
+
+TUN 连接（会接管系统流量）：
+
+```bash
+sudo "$SING_BOX_BIN" run -c configs/client/macos_singbox.json
+```
+
+两种方式都在运行终端按 `Control + C` 停止。TUN 连接前必须先关闭 Shadowrocket，不要让两者同时接管系统流量。
+完整的二进制选择、mixed 测试和停止步骤请看 `docs/30_macos_local_singbox_backup.md`。
+
+如果 Mac App Store 暂时无法下载 sing-box VT，而你已经安装了 Shadowrocket，并且明确允许把真实链接写入剪贴板，可以运行：
 
 ```bash
 bash scripts/copy_shadowrocket_link_macos.sh
@@ -391,18 +528,9 @@ Windows 上不要使用只有“服务器、端口、密码、加密方式”的
 PowerShell 环境变量应写成 `$env:变量名="值"`，完整示例见 `docs/25_cross_platform_command_guide.md`。
 如果只是配置 Windows 客户端，不需要重新运行 `vps_init.sh` 或 `install_xray.sh`。
 
-如果 VPS 已经配置好，但 Windows 本机还没有 `jq` 或 GitHub 访问暂时不稳定，推荐直接从 VPS 生成 v2rayN 导入链接。
-该脚本会显式调用 `C:\Windows\System32\OpenSSH\ssh.exe`，避开某些 Windows 环境中 `ssh` 打开空文档的问题：
+推荐先在仓库运行统一刷新入口，再把 `configs/client/android_v2rayng_vless_link.txt` 安全传到 Windows；它与另外两个 VLESS 链接来自同一次派生，可由 v2rayN 导入。准备文件不会自动连接，只有在 v2rayN 中选择节点并启用系统代理后才会改变 Windows 网络状态。
 
-```powershell
-$env:VPS_HOST="<你的_VPS_IP或域名>"
-$env:SSH_USER="root"
-$env:SSH_PORT="22"
-powershell -ExecutionPolicy Bypass -File .\scripts\windows_generate_vless_link_from_vps.ps1
-```
-
-脚本会把 `vless://...` 链接复制到剪贴板，并保存到桌面的 `vless-link.txt`。
-然后在 Windows v2rayN 中选择从剪贴板导入分享链接。
+Windows 专用的远端生成脚本属于显式备用路径，会写桌面文件和剪贴板；它不是统一刷新默认流程。只有确实需要该副作用时，才按 `docs/22_windows_client_setup.md` 的说明单独运行。
 
 如果是在 macOS / Linux / Git Bash / WSL 上准备链接，也可以运行：
 
@@ -474,7 +602,7 @@ bash scripts/fetch_remote_xray_config.sh
 
 拉取后的文件会保存到 `configs/server/config.json`，该文件包含真实密钥并已被 `.gitignore` 忽略。
 如果本地原来已有同名配置，脚本会先备份到 `backups/`。
-如果 Windows 提示缺少 `jq`，新版脚本会在远端校验通过后继续保存；但后续生成客户端配置仍建议安装：`winget install jqlang.jq`。
+如果 Windows 提示缺少 `jq`，拉取脚本可在远端基础校验通过后保存镜像；后续生成客户端配置仍需要按 jq 官方文档为当前系统安装。
 
 节点跑通后，建议先做一次远程备份：
 
@@ -554,6 +682,7 @@ bash scripts/restore_remote_xray_config.sh backups/<你的备份包>.tar.gz
 - 真实敏感数据只允许通过 `.env`（本地）或安全凭据系统管理。
 - 仓库中仅保留模板与占位符。
 - 提交前务必检查 `git diff`，避免泄露真实地址、密钥和链接。
+- `git commit` 只记录本地代码历史，`git push` 只发布仓库代码；两者都不等于部署到 VPS。远端部署、重启、升级和防火墙修改必须单独明确授权。
 
 ## Round 0 验收命令
 请按顺序执行以下命令：

@@ -71,10 +71,10 @@ check_singbox_ai_workflow_domains() {
   SINGBOX_DOMAINS=()
   while IFS= read -r entry; do
     [ -n "$entry" ] && SINGBOX_SUFFIXES+=("$entry")
-  done < <(jq -r '[.route.rules[]? | .domain_suffix[]? // empty] | .[]' "$config_file")
+  done < <(jq -r '[.route.rules[]? | select(.outbound? == "proxy") | .domain_suffix[]? // empty] | .[]' "$config_file")
   while IFS= read -r entry; do
     [ -n "$entry" ] && SINGBOX_DOMAINS+=("$entry")
-  done < <(jq -r '[.route.rules[]? | .domain[]? // empty] | .[]' "$config_file")
+  done < <(jq -r '[.route.rules[]? | select(.outbound? == "proxy") | .domain[]? // empty] | .[]' "$config_file")
 
   echo "== ai workflow routing =="
   for expected in "${AI_WORKFLOW_DOMAIN_SUFFIXES[@]}"; do
@@ -97,7 +97,7 @@ check_singbox_ai_workflow_domains() {
 check_shadowrocket_ai_workflow_domains() {
   local conf_file="$1"
   local expected missing_count=0
-  local line rule_domain rule_suffix
+  local line rule_domain rule_suffix rule_policy
 
   echo "== ai workflow routing =="
   for expected in "${AI_WORKFLOW_DOMAIN_SUFFIXES[@]}"; do
@@ -107,7 +107,9 @@ check_shadowrocket_ai_workflow_domains() {
       rule_domain="${rule_domain%,*}"
       rule_suffix="${line#DOMAIN-SUFFIX,}"
       rule_suffix="${rule_suffix%,*}"
-      if [ "$rule_domain" = "$expected" ] || [ "$rule_suffix" = "$expected" ]; then
+      rule_policy="${line##*,}"
+      if { [ "$rule_domain" = "$expected" ] || [ "$rule_suffix" = "$expected" ]; } \
+        && [ "$rule_policy" = "proxy" ]; then
         covered=1
         break
       fi

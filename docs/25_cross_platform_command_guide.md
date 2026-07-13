@@ -60,12 +60,18 @@ VPS_HOST="<你的_VPS_IP>" SSH_USER="root" SSH_PORT="22" bash scripts/deploy_xra
 VPS_HOST="<你的_VPS_IP>" SSH_USER="root" SSH_PORT="22" bash scripts/backup_remote_xray.sh
 ```
 
-客户端配置生成也使用同样规则：
+客户端统一刷新也使用同样规则；以下命令会远端只读拉取和健康检查，但默认不执行远端写操作：
 
 ```bash
-NODE_HOST="<你的_VPS_IP或域名>" \
-XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
-bash scripts/generate_singbox_config.sh
+VPS_HOST="<你的_VPS_IP或域名>" \
+RUN_BACKUP="no" \
+UPDATE_XRAY="no" \
+FETCH_REMOTE_CONFIG="yes" \
+GENERATE_CLIENTS="yes" \
+RUN_HEALTH_CHECK="yes" \
+COPY_LINK_TO_CLIPBOARD="no" \
+CONFIRM="yes" \
+bash scripts/update_node_and_clients.sh
 ```
 
 ## 3. Windows PowerShell 写法
@@ -87,12 +93,18 @@ bash scripts/check_xray_health.sh
 $env:VPS_HOST="<你的_VPS_IP>"; $env:SSH_USER="root"; $env:SSH_PORT="22"; bash scripts/check_xray_health.sh
 ```
 
-客户端配置生成示例：
+客户端统一刷新示例：
 
 ```powershell
-$env:NODE_HOST="<你的_VPS_IP或域名>"
-$env:XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>"
-bash scripts/generate_singbox_config.sh
+$env:VPS_HOST="<你的_VPS_IP或域名>"
+$env:RUN_BACKUP="no"
+$env:UPDATE_XRAY="no"
+$env:FETCH_REMOTE_CONFIG="yes"
+$env:GENERATE_CLIENTS="yes"
+$env:RUN_HEALTH_CHECK="yes"
+$env:COPY_LINK_TO_CLIPBOARD="no"
+$env:CONFIRM="yes"
+bash scripts/update_node_and_clients.sh
 ```
 
 PowerShell 环境变量只在当前窗口生效。关闭窗口后会自动消失。
@@ -104,6 +116,13 @@ Remove-Item Env:SSH_USER -ErrorAction SilentlyContinue
 Remove-Item Env:SSH_PORT -ErrorAction SilentlyContinue
 Remove-Item Env:NODE_HOST -ErrorAction SilentlyContinue
 Remove-Item Env:XRAY_REALITY_PUBLIC_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:RUN_BACKUP -ErrorAction SilentlyContinue
+Remove-Item Env:UPDATE_XRAY -ErrorAction SilentlyContinue
+Remove-Item Env:FETCH_REMOTE_CONFIG -ErrorAction SilentlyContinue
+Remove-Item Env:GENERATE_CLIENTS -ErrorAction SilentlyContinue
+Remove-Item Env:RUN_HEALTH_CHECK -ErrorAction SilentlyContinue
+Remove-Item Env:COPY_LINK_TO_CLIPBOARD -ErrorAction SilentlyContinue
+Remove-Item Env:CONFIRM -ErrorAction SilentlyContinue
 ```
 
 ## 4. Windows 路径写法
@@ -225,3 +244,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_generate_vless_link_f
 2. Windows PowerShell 用户能直接复制 `$env:` 示例。
 3. 用户能分清本机仓库、Windows 客户端和 VPS 远程 shell。
 4. 不再把 `VPS_HOST="..." \` 这种 Bash 多行写法直接粘贴到 PowerShell。
+
+## 9. 操作边界
+
+- 生成或校验配置只是准备文件，不会自动连接。
+- GUI 中启用 Profile、CLI `run`、系统代理和 VPN/TUN 才会改变本机网络。
+- `git commit` 是本地历史，`git push` 是仓库发布；二者都不等于 VPS 部署。
+- 远端部署、备份、升级、重启、恢复和防火墙修改是独立操作，必须分别明确授权。

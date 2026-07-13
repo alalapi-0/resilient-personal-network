@@ -38,6 +38,27 @@ SSH_PORT="22" \
 bash scripts/check_xray_health.sh
 ```
 
+也可以运行默认安全的统一刷新入口。它只做远端读取、客户端生成和只读健康检查：
+
+```bash
+VPS_HOST="<你的_VPS_IP>" \
+SSH_USER="root" \
+SSH_PORT="22" \
+SSH_AUTH_MODE="publickey" \
+SSH_ASKPASS_MODE="none" \
+SSH_KEYCHAIN_MODE="none" \
+CONFIRM="yes" \
+RUN_BACKUP="no" \
+UPDATE_XRAY="no" \
+FETCH_REMOTE_CONFIG="yes" \
+GENERATE_CLIENTS="yes" \
+RUN_HEALTH_CHECK="yes" \
+COPY_LINK_TO_CLIPBOARD="no" \
+bash scripts/update_node_and_clients.sh
+```
+
+这条命令不会远端备份、升级、重启、部署、恢复、修改防火墙或轮换凭据，也不会启动本机代理。八个客户端产物均从本次拉取的活跃配置及其派生公钥生成。
+
 ### 每月
 
 1. 备份一次当前远程配置：
@@ -61,7 +82,7 @@ bash scripts/backup_remote_xray.sh
 
 ### 每 6 到 12 个月
 
-1. 评估是否需要轮换 UUID 和 REALITY 密钥。
+1. 检查是否有凭据泄露证据；没有泄露迹象时不要例行轮换 UUID、REALITY 密钥或 shortId。
 2. 检查是否需要新增备用 VPS。
 3. 清理旧备份，只保留可信、可恢复的版本。
 
@@ -124,6 +145,20 @@ do-release-upgrade
 2. `ss -lntp | grep ':443'`
 3. `ufw status verbose`
 4. 手机或电脑访问 `https://ipinfo.io`
+
+需要升级时，使用同一个维护入口并显式打开：
+
+```bash
+VPS_HOST="<你的_VPS_IP>" \
+SSH_USER="root" \
+SSH_PORT="22" \
+SSH_AUTH_MODE="publickey" \
+SSH_ASKPASS_MODE="none" \
+SSH_KEYCHAIN_MODE="none" \
+CONFIRM="yes" \
+UPDATE_XRAY="yes" \
+bash scripts/update_node_and_clients.sh
+```
 
 ## 7. 密钥轮换建议
 

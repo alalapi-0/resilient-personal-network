@@ -53,9 +53,23 @@ templates/singbox_client_template.json
 
 ```text
 configs/client/singbox.json
+configs/client/macos_singbox.json
+configs/client/macos_singbox_mixed.json
 ```
 
-`configs/client/singbox.json` 包含真实节点信息，已被 `.gitignore` 忽略，不应提交。
+三个文件由统一刷新入口从同一来源生成，包含真实节点信息，已被 `.gitignore` 忽略，不应提交。
+
+### Shadowrocket
+
+通用模板与生成器：
+
+```text
+templates/shadowrocket_client.conf.template
+scripts/generate_shadowrocket_config.sh
+configs/client/shadowrocket.conf
+```
+
+`shadowrocket.conf` 是不含 macOS 本地监听器的通用完整配置。
 
 ### Shadowrocket macOS
 
