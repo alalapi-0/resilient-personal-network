@@ -57,7 +57,8 @@ configure_ssh_auth_opts() {
   SSH_AUTH_MODE="${SSH_AUTH_MODE:-auto}"
   SSH_ASKPASS_MODE="${SSH_ASKPASS_MODE:-none}"
   SSH_KEYCHAIN_MODE="${SSH_KEYCHAIN_MODE:-none}"
-  SSH_AUTH_OPTS=()
+  # Bash 3.2 在 set -u 下无法安全展开空数组；显式保留 OpenSSH 的默认交互行为。
+  SSH_AUTH_OPTS=(-o BatchMode=no)
 
   case "$SSH_AUTH_MODE" in
     auto)
