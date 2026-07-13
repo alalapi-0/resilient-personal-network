@@ -21,6 +21,7 @@ SCRIPT_BASENAME="collect_remote_diagnostics.sh"
 source "$SCRIPT_DIR/lib/require_tty.sh"
 
 require_vps_host
+configure_ssh_auth_opts
 
 TIMESTAMP="$(date -u '+%Y%m%d-%H%M%S')"
 SAFE_HOST="$(printf '%s' "$VPS_HOST" | tr -c 'A-Za-z0-9._-' '_')"
@@ -29,6 +30,7 @@ OUTPUT_FILE="$LOCAL_LOG_DIR/remote-diagnostics-${SAFE_HOST}-${TIMESTAMP}.txt"
 SSH_TARGET="${SSH_USER}@${VPS_HOST}"
 SSH_OPTS=(
   -p "$SSH_PORT"
+  "${SSH_AUTH_OPTS[@]}"
   -o BatchMode=no
   -o ConnectTimeout=15
   -o ServerAliveInterval=30

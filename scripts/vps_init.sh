@@ -21,6 +21,7 @@ SCRIPT_BASENAME="vps_init.sh"
 source "$SCRIPT_DIR/lib/require_tty.sh"
 
 require_vps_host
+configure_ssh_auth_opts
 
 # 展示即将操作的目标，避免误连到其他服务器。
 echo "即将初始化以下 VPS："
@@ -43,6 +44,7 @@ SSH_TARGET="${SSH_USER}@${VPS_HOST}"
 # - BatchMode=no：允许终端提示输入私钥密码。
 SSH_OPTS=(
   -p "$SSH_PORT"
+  "${SSH_AUTH_OPTS[@]}"
   -o BatchMode=no
   -o ConnectTimeout=15
   -o ServerAliveInterval=30

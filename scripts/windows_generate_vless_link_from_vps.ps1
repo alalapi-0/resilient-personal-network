@@ -98,7 +98,7 @@ FLOW="$(jq -r '.inbounds[0].settings.clients[0].flow' "$CFG")"
 SNI="$(jq -r '.inbounds[0].streamSettings.realitySettings.serverNames[0]' "$CFG")"
 SID="$(jq -r '.inbounds[0].streamSettings.realitySettings.shortIds[0]' "$CFG")"
 PRIV="$(jq -r '.inbounds[0].streamSettings.realitySettings.privateKey' "$CFG")"
-PUB="$(/usr/local/bin/xray x25519 -i "$PRIV" | sed -n 's/^Public key: //p' | tr -d '\r\n ')"
+PUB="$(/usr/local/bin/xray x25519 -i "$PRIV" | sed -nE 's/^(Public key|PublicKey|Password \(PublicKey\)):[[:space:]]*//p' | head -n 1 | tr -d '\r\n ')"
 NODE_NAME_ENCODED="$(jq -rn --arg value "${NODE_NAME:-jp-tokyo-01}" '$value | @uri')"
 
 test -n "$UUID" || { echo "ERR: UUID empty" >&2; exit 1; }

@@ -23,6 +23,7 @@ SCRIPT_BASENAME="backup_remote_xray.sh"
 source "$SCRIPT_DIR/lib/require_tty.sh"
 
 require_vps_host
+configure_ssh_auth_opts
 
 TIMESTAMP="$(date -u '+%Y%m%d-%H%M%S')"
 SAFE_HOST="$(printf '%s' "$VPS_HOST" | tr -c 'A-Za-z0-9._-' '_')"
@@ -45,6 +46,7 @@ require_confirm_yes
 SSH_TARGET="${SSH_USER}@${VPS_HOST}"
 SSH_OPTS=(
   -p "$SSH_PORT"
+  "${SSH_AUTH_OPTS[@]}"
   -o BatchMode=no
   -o ConnectTimeout=15
   -o ServerAliveInterval=30
@@ -121,7 +123,7 @@ REMOTE_SCRIPT
 
 if [ "$DOWNLOAD_BACKUP" = "yes" ]; then
   echo "[info] downloading backup to local backups directory..."
-  scp -P "$SSH_PORT" "$SSH_TARGET:$REMOTE_BACKUP_PATH" "$LOCAL_BACKUP_PATH"
+  scp -P "$SSH_PORT" "${SSH_AUTH_OPTS[@]}" "$SSH_TARGET:$REMOTE_BACKUP_PATH" "$LOCAL_BACKUP_PATH"
   chmod 600 "$LOCAL_BACKUP_PATH"
   echo "[ok] local backup saved to $LOCAL_BACKUP_PATH"
 else

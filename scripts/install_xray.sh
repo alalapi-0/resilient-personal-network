@@ -21,6 +21,7 @@ SCRIPT_BASENAME="install_xray.sh"
 source "$SCRIPT_DIR/lib/require_tty.sh"
 
 require_vps_host
+configure_ssh_auth_opts
 
 echo "即将在 VPS 上安装 Xray-core："
 echo "  主机：$VPS_HOST"
@@ -36,6 +37,7 @@ require_confirm_yes
 SSH_TARGET="${SSH_USER}@${VPS_HOST}"
 SSH_OPTS=(
   -p "$SSH_PORT"
+  "${SSH_AUTH_OPTS[@]}"
   -o BatchMode=no
   -o ConnectTimeout=15
   -o ServerAliveInterval=30

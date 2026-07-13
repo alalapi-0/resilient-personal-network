@@ -18,16 +18,13 @@ REMOTE_PROJECT_DIR="${REMOTE_PROJECT_DIR:-/opt/resilient-personal-network}"
 REMOTE_CONFIG_PATH="${REMOTE_CONFIG_PATH:-/usr/local/etc/xray/config.json}"
 REMOTE_TMP_PATH="/tmp/xray-config-upload-$(date -u '+%Y%m%d-%H%M%S').json"
 
-# 如果未传入 VPS_HOST，则暂停要求用户输入。
-if [ -z "$VPS_HOST" ]; then
-  read -r -p "请输入 VPS 公网 IP 或域名（不会写入仓库）： " VPS_HOST
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_BASENAME="deploy_xray_config.sh"
+# shellcheck source=lib/require_tty.sh
+source "$SCRIPT_DIR/lib/require_tty.sh"
 
-# 检查必要信息。
-if [ -z "$VPS_HOST" ]; then
-  echo "[error] VPS_HOST 不能为空"
-  exit 1
-fi
+require_vps_host
+configure_ssh_auth_opts
 
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "[error] 本地配置文件不存在：$CONFIG_FILE"
@@ -47,17 +44,12 @@ echo "  本地配置：$CONFIG_FILE"
 echo "  远程配置：$REMOTE_CONFIG_PATH"
 echo "  远程项目目录：$REMOTE_PROJECT_DIR"
 echo
-read -r -p "确认继续？输入 yes 后继续： " CONFIRM
-
-# 只有明确输入 yes 才继续，避免误覆盖。
-if [ "$CONFIRM" != "yes" ]; then
-  echo "[cancelled] user cancelled xray config deployment"
-  exit 0
-fi
+require_confirm_yes
 
 SSH_TARGET="${SSH_USER}@${VPS_HOST}"
 SSH_OPTS=(
   -p "$SSH_PORT"
+  "${SSH_AUTH_OPTS[@]}"
   -o BatchMode=no
   -o ConnectTimeout=15
   -o ServerAliveInterval=30
@@ -66,7 +58,7 @@ SSH_OPTS=(
 
 # 上传到远程临时路径，先不覆盖正式配置。
 echo "[info] uploading config to temporary path..."
-scp -P "$SSH_PORT" "$CONFIG_FILE" "$SSH_TARGET:$REMOTE_TMP_PATH"
+scp -P "$SSH_PORT" "${SSH_AUTH_OPTS[@]}" "$CONFIG_FILE" "$SSH_TARGET:$REMOTE_TMP_PATH"
 
 # 在远程 VPS 上校验、备份、替换、重启。
 echo "[info] applying config on remote server..."
@@ -100,6 +92,19 @@ fi
 # 远程再次检查 JSON 格式。
 jq empty "$REMOTE_TMP_PATH" >/dev/null
 echo "[remote-ok] uploaded config json is valid"
+
+# 使用远端实际安装的 Xray 做完整配置预检，避免 JSON 有效但字段不兼容。
+if [ ! -x /usr/local/bin/xray ]; then
+  echo "[remote-error] 未找到可执行的 /usr/local/bin/xray，停止部署"
+  rm -f "$REMOTE_TMP_PATH"
+  exit 1
+fi
+if ! /usr/local/bin/xray run -test -config "$REMOTE_TMP_PATH" >/dev/null; then
+  echo "[remote-error] uploaded config failed xray run -test，停止部署"
+  rm -f "$REMOTE_TMP_PATH"
+  exit 1
+fi
+echo "[remote-ok] uploaded config passed xray run -test"
 
 # 确保目录存在。
 mkdir -p "$BACKUP_DIR"
@@ -141,10 +146,19 @@ fi
 # 确认 xray 用户可读取配置。
 su -s /bin/sh -c "test -r '$REMOTE_CONFIG_PATH' && echo '[remote-ok] config readable by xray user'" xray
 
-# 重启服务并输出状态。
+# 重启服务；如果新配置无法启动或未保持 active，立即恢复本轮刚创建的备份。
 systemctl daemon-reload
-systemctl restart xray
-systemctl is-active --quiet xray
+if ! systemctl restart xray || ! systemctl is-active --quiet xray; then
+  echo "[remote-error] xray failed to restart or become active with new config"
+  if [ -f "$BACKUP_FILE" ]; then
+    install -o root -g xray -m 640 "$BACKUP_FILE" "$REMOTE_CONFIG_PATH"
+    systemctl restart xray
+    echo "[remote-rollback] previous config restored and xray restarted"
+  else
+    echo "[remote-error] previous config backup is unavailable; manual recovery required"
+  fi
+  exit 1
+fi
 systemctl status xray --no-pager -l
 REMOTE_SCRIPT
 

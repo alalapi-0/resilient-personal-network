@@ -16,6 +16,11 @@ SSH_PORT="${SSH_PORT:-22}"
 REMOTE_PROJECT_DIR="${REMOTE_PROJECT_DIR:-/opt/resilient-personal-network}"
 REMOTE_CONFIG_PATH="${REMOTE_CONFIG_PATH:-/usr/local/etc/xray/config.json}"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_BASENAME="restore_remote_xray_config.sh"
+# shellcheck source=lib/require_tty.sh
+source "$SCRIPT_DIR/lib/require_tty.sh"
+
 if [ -z "$BACKUP_FILE" ]; then
   echo "[error] 请提供备份包路径"
   echo "用法示例："
@@ -40,14 +45,8 @@ if ! tar -tzf "$BACKUP_FILE" | sed 's#^\./##' | grep -qx 'config.json'; then
   exit 1
 fi
 
-if [ -z "$VPS_HOST" ]; then
-  read -r -p "请输入 VPS 公网 IP 或域名（不会写入仓库）： " VPS_HOST
-fi
-
-if [ -z "$VPS_HOST" ]; then
-  echo "[error] VPS_HOST 不能为空"
-  exit 1
-fi
+require_vps_host
+configure_ssh_auth_opts
 
 TIMESTAMP="$(date -u '+%Y%m%d-%H%M%S')"
 REMOTE_TMP_BACKUP="/tmp/xray-restore-${TIMESTAMP}.tar.gz"
@@ -61,16 +60,12 @@ echo "  远程配置：$REMOTE_CONFIG_PATH"
 echo
 echo "警告：这会替换 VPS 当前 Xray 配置。脚本会先备份当前配置，但仍请确认你选择的是正确备份包。"
 echo
-read -r -p "确认恢复？输入 RESTORE 后继续： " CONFIRM
-
-if [ "$CONFIRM" != "RESTORE" ]; then
-  echo "[cancelled] user cancelled remote restore"
-  exit 0
-fi
+require_confirm_value "RESTORE" "确认恢复？输入 RESTORE 后继续： "
 
 SSH_TARGET="${SSH_USER}@${VPS_HOST}"
 SSH_OPTS=(
   -p "$SSH_PORT"
+  "${SSH_AUTH_OPTS[@]}"
   -o BatchMode=no
   -o ConnectTimeout=15
   -o ServerAliveInterval=30
@@ -78,7 +73,7 @@ SSH_OPTS=(
 )
 
 echo "[info] uploading backup package to remote temporary path..."
-scp -P "$SSH_PORT" "$BACKUP_FILE" "$SSH_TARGET:$REMOTE_TMP_BACKUP"
+scp -P "$SSH_PORT" "${SSH_AUTH_OPTS[@]}" "$BACKUP_FILE" "$SSH_TARGET:$REMOTE_TMP_BACKUP"
 
 echo "[info] restoring config on remote server..."
 ssh "${SSH_OPTS[@]}" "$SSH_TARGET" \
