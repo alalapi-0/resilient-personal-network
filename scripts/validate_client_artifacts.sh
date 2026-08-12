@@ -1,7 +1,42 @@
 #!/usr/bin/env bash
+
+define_client_artifact_manifest() {
+  CLIENT_ARTIFACT_MANIFEST=(
+    "modern|tun|singbox.json|singbox|modern-primary|通用 sing-box 配置"
+    "modern|tun|macos_singbox.json|singbox|modern-macos-tun|macOS sing-box TUN 配置"
+    "modern|mixed|macos_singbox_mixed.json|singbox|modern-macos-mixed|macOS sing-box mixed 配置"
+    "legacy|tun|singbox-ios-legacy-1.11.4.json|singbox|legacy-ios|iOS legacy sing-box 1.11.4 配置"
+    "link|-|shadowrocket_link.txt|link|link-primary|通用 VLESS 链接"
+    "link|-|ios_shadowrocket_vless_link.txt|link|link-ios|iOS VLESS 链接"
+    "link|-|android_v2rayng_vless_link.txt|link|link-android|Android VLESS 链接"
+    "conf|-|shadowrocket.conf|shadowrocket|conf-primary|通用 Shadowrocket 配置"
+    "conf|-|shadowrocket-macos.conf|shadowrocket-macos|conf-macos|macOS Shadowrocket 配置"
+  )
+}
+
+validate_client_artifact_manifest_definition() {
+  python3 - "${CLIENT_ARTIFACT_MANIFEST[@]}" <<'PY'
+import sys
+rows = [item.split("|") for item in sys.argv[1:]]
+if not rows or any(len(row) != 6 or not all(row) for row in rows):
+    raise SystemExit(1)
+basenames = [row[2] for row in rows]
+roles = [row[4] for row in rows]
+if len(basenames) != len(set(basenames)) or len(roles) != len(set(roles)):
+    raise SystemExit(1)
+if any("/" in name or name in {".", ".."} for name in basenames):
+    raise SystemExit(1)
+PY
+}
+
+if [ "${CLIENT_ARTIFACT_MANIFEST_ONLY:-no}" = "yes" ]; then
+  define_client_artifact_manifest
+  return 0 2>/dev/null || exit 0
+fi
+
 set -euo pipefail
 
-# 校验统一刷新产生的八个客户端产物。
+# 校验统一刷新产生的九个客户端产物。
 # 输出只描述字段和 PASS/FAIL，不显示连接值。
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,15 +44,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
 SERVER_CONFIG="${SERVER_CONFIG:-configs/server/config.json}"
-SINGBOX_CONFIG="${SINGBOX_CONFIG:-configs/client/singbox.json}"
-MACOS_SINGBOX_CONFIG="${MACOS_SINGBOX_CONFIG:-configs/client/macos_singbox.json}"
-MACOS_SINGBOX_MIXED_CONFIG="${MACOS_SINGBOX_MIXED_CONFIG:-configs/client/macos_singbox_mixed.json}"
-SHADOWROCKET_LINK_FILE="${SHADOWROCKET_LINK_FILE:-configs/client/shadowrocket_link.txt}"
-IOS_SHADOWROCKET_LINK_FILE="${IOS_SHADOWROCKET_LINK_FILE:-configs/client/ios_shadowrocket_vless_link.txt}"
-ANDROID_V2RAYNG_LINK_FILE="${ANDROID_V2RAYNG_LINK_FILE:-configs/client/android_v2rayng_vless_link.txt}"
-SHADOWROCKET_CONFIG_FILE="${SHADOWROCKET_CONFIG_FILE:-configs/client/shadowrocket.conf}"
-SHADOWROCKET_MACOS_CONFIG_FILE="${SHADOWROCKET_MACOS_CONFIG_FILE:-configs/client/shadowrocket-macos.conf}"
+CLIENT_OUTPUT_DIR="${CLIENT_OUTPUT_DIR:-configs/client}"
 CHECK_GIT_STATE="${CHECK_GIT_STATE:-yes}"
+STRICT_ARTIFACT_SET="${STRICT_ARTIFACT_SET:-yes}"
+TRANSACTION_BACKUP_SUFFIX="${TRANSACTION_BACKUP_SUFFIX:-}"
 
 ERROR_COUNT=0
 
@@ -57,34 +87,117 @@ else
   exit 1
 fi
 
-if [ "$CHECK_GIT_STATE" != "yes" ] && [ "$CHECK_GIT_STATE" != "no" ]; then
-  echo "[error] CHECK_GIT_STATE 只能是 yes 或 no"
+for flag_name in CHECK_GIT_STATE STRICT_ARTIFACT_SET; do
+  if [ "${!flag_name}" != "yes" ] && [ "${!flag_name}" != "no" ]; then
+    echo "[error] $flag_name 只能是 yes 或 no"
+    exit 1
+  fi
+done
+
+define_client_artifact_manifest
+if ! validate_client_artifact_manifest_definition; then
+  echo "[error] 客户端产物清单定义无效"
   exit 1
 fi
 
-ARTIFACT_PATHS=(
-  "$SERVER_CONFIG"
-  "$SINGBOX_CONFIG"
-  "$MACOS_SINGBOX_CONFIG"
-  "$MACOS_SINGBOX_MIXED_CONFIG"
-  "$SHADOWROCKET_LINK_FILE"
-  "$IOS_SHADOWROCKET_LINK_FILE"
-  "$ANDROID_V2RAYNG_LINK_FILE"
-  "$SHADOWROCKET_CONFIG_FILE"
-  "$SHADOWROCKET_MACOS_CONFIG_FILE"
-)
+CLIENT_ARTIFACT_PATHS=()
+CLIENT_ARTIFACT_LABELS=()
+CLIENT_ARTIFACT_KINDS=()
+CLIENT_ARTIFACT_ROLES=()
+SINGBOX_PATHS=()
+SINGBOX_LABELS=()
+SINGBOX_MODES=()
+LINK_PATHS=()
+LINK_LABELS=()
+CONF_PATHS=()
+CONF_LABELS=()
+for manifest_entry in "${CLIENT_ARTIFACT_MANIFEST[@]}"; do
+  IFS='|' read -r artifact_kind artifact_mode artifact_basename artifact_generator artifact_role artifact_label <<EOF
+$manifest_entry
+EOF
+  artifact_path="$CLIENT_OUTPUT_DIR/$artifact_basename"
+  CLIENT_ARTIFACT_KINDS+=("$artifact_kind")
+  CLIENT_ARTIFACT_ROLES+=("$artifact_role")
+  CLIENT_ARTIFACT_LABELS+=("$artifact_label")
+  CLIENT_ARTIFACT_PATHS+=("$artifact_path")
+  case "$artifact_kind" in
+    modern)
+      SINGBOX_PATHS+=("$artifact_path")
+      SINGBOX_LABELS+=("$artifact_label")
+      SINGBOX_MODES+=("$artifact_mode")
+      ;;
+    legacy)
+      IOS_LEGACY_SINGBOX_CONFIG="$artifact_path"
+      ;;
+    link)
+      LINK_PATHS+=("$artifact_path")
+      LINK_LABELS+=("$artifact_label")
+      ;;
+    conf)
+      CONF_PATHS+=("$artifact_path")
+      CONF_LABELS+=("$artifact_label")
+      ;;
+    *)
+      echo "[error] 客户端产物清单类型无效"
+      exit 1
+      ;;
+  esac
+done
 
-ARTIFACT_LABELS=(
-  "服务端镜像"
-  "通用 sing-box 配置"
-  "macOS sing-box TUN 配置"
-  "macOS sing-box mixed 配置"
-  "通用 VLESS 链接"
-  "iOS VLESS 链接"
-  "Android VLESS 链接"
-  "通用 Shadowrocket 配置"
-  "macOS Shadowrocket 配置"
-)
+ARTIFACT_PATHS=("$SERVER_CONFIG" "${CLIENT_ARTIFACT_PATHS[@]}")
+ARTIFACT_LABELS=("服务端镜像" "${CLIENT_ARTIFACT_LABELS[@]}")
+
+EXPECTED_CLIENT_ARTIFACT_COUNT="${#CLIENT_ARTIFACT_MANIFEST[@]}"
+if [ "${#CLIENT_ARTIFACT_PATHS[@]}" -ne "$EXPECTED_CLIENT_ARTIFACT_COUNT" ] \
+  || [ "${#CLIENT_ARTIFACT_LABELS[@]}" -ne "$EXPECTED_CLIENT_ARTIFACT_COUNT" ] \
+  || [ "${#ARTIFACT_PATHS[@]}" -ne "${#ARTIFACT_LABELS[@]}" ]; then
+  echo "[error] 客户端产物清单定义不一致"
+  exit 1
+fi
+
+if python3 - "${CLIENT_ARTIFACT_PATHS[@]}" <<'PY'
+from pathlib import Path
+import sys
+paths = [(Path(item).parent.resolve() / Path(item).name) for item in sys.argv[1:]]
+raise SystemExit(0 if len(paths) == len(set(paths)) else 1)
+PY
+then
+  ok "客户端产物清单路径唯一"
+else
+  error "客户端产物清单包含重复路径"
+fi
+
+if [ -n "$TRANSACTION_BACKUP_SUFFIX" ] && ! printf '%s' "$TRANSACTION_BACKUP_SUFFIX" | grep -Eq '^\.previous\.[0-9]+$'; then
+  echo "[error] TRANSACTION_BACKUP_SUFFIX 格式无效"
+  exit 1
+fi
+
+if [ "$STRICT_ARTIFACT_SET" = "yes" ]; then
+  if python3 - "$EXPECTED_CLIENT_ARTIFACT_COUNT" "$TRANSACTION_BACKUP_SUFFIX" "${CLIENT_ARTIFACT_PATHS[@]}" <<'PY'
+from pathlib import Path
+import sys
+
+expected_count = int(sys.argv[1])
+backup_suffix = sys.argv[2]
+expected = [(Path(item).parent.resolve() / Path(item).name) for item in sys.argv[3:]]
+parents = {item.parent for item in expected}
+if len(expected) != expected_count or len(set(expected)) != expected_count or len(parents) != 1:
+    raise SystemExit(1)
+parent = next(iter(parents))
+actual_names = {item.name for item in parent.iterdir()}
+expected_names = {item.name for item in expected}
+if backup_suffix:
+    allowed_backups = {"." + name + backup_suffix for name in expected_names}
+    actual_names -= allowed_backups
+if actual_names != expected_names:
+    raise SystemExit(1)
+PY
+  then
+    ok "客户端目录恰好包含清单中的九个产物"
+  else
+    error "客户端目录存在缺失、额外、重复或跨目录产物"
+  fi
+fi
 
 file_mode() {
   local file_path="$1"
@@ -147,18 +260,6 @@ fi
 # shellcheck source=lib/check_ai_workflow_domains.sh
 source "$SCRIPT_DIR/lib/check_ai_workflow_domains.sh"
 
-SINGBOX_PATHS=(
-  "$SINGBOX_CONFIG"
-  "$MACOS_SINGBOX_CONFIG"
-  "$MACOS_SINGBOX_MIXED_CONFIG"
-)
-SINGBOX_LABELS=(
-  "通用 sing-box 配置"
-  "macOS sing-box TUN 配置"
-  "macOS sing-box mixed 配置"
-)
-SINGBOX_MODES=("tun" "tun" "mixed")
-
 for index in "${!SINGBOX_PATHS[@]}"; do
   config_path="${SINGBOX_PATHS[$index]}"
   config_label="${SINGBOX_LABELS[$index]}"
@@ -212,16 +313,47 @@ for index in "${!SINGBOX_PATHS[@]}"; do
   fi
 done
 
-LINK_PATHS=(
-  "$SHADOWROCKET_LINK_FILE"
-  "$IOS_SHADOWROCKET_LINK_FILE"
-  "$ANDROID_V2RAYNG_LINK_FILE"
-)
-LINK_LABELS=(
-  "通用 VLESS 链接"
-  "iOS VLESS 链接"
-  "Android VLESS 链接"
-)
+if ! jq empty "$IOS_LEGACY_SINGBOX_CONFIG" >/dev/null 2>&1; then
+  error "iOS legacy sing-box 1.11.4 配置 JSON 格式无效"
+else
+  ok "iOS legacy sing-box 1.11.4 配置 JSON 格式有效"
+
+  if grep -qF '${' "$IOS_LEGACY_SINGBOX_CONFIG"; then
+    error "iOS legacy sing-box 1.11.4 配置仍有占位符"
+  else
+    ok "iOS legacy sing-box 1.11.4 配置没有占位符"
+  fi
+
+  if jq -e '
+    (.inbounds[0].type == "tun")
+    and ((.route | has("default_domain_resolver")) | not)
+    and all(.dns.servers[]?; (has("type") | not))
+    and all(.dns.servers[]?;
+      ((.address | type) == "string") and ((.address | length) > 0))
+    and any(.dns.servers[]?;
+      (.address | startswith("https://"))
+      and ((.detour | type) == "string")
+      and ((.detour | length) > 0))
+    and any(.dns.servers[]?; .address == "local")
+    and any(.dns.rules[]?;
+      .outbound == "any"
+      and ((.server | type) == "string")
+      and ((.server | length) > 0))
+    and all(.outbounds[]?; .type != "block")
+  ' "$IOS_LEGACY_SINGBOX_CONFIG" >/dev/null 2>&1; then
+    ok "iOS legacy sing-box 1.11.4 配置使用 address DNS 与 outbound 规则"
+  else
+    error "iOS legacy sing-box 1.11.4 配置 DNS 或路由结构不符合 1.11.x 要求"
+  fi
+
+  ok "证据声明：未执行 1.11.4 sing-box check（本机无该版本二进制）"
+
+  if check_singbox_ai_workflow_domains "$IOS_LEGACY_SINGBOX_CONFIG" >/dev/null; then
+    ok "iOS legacy sing-box 1.11.4 配置 AI 分流规则完整"
+  else
+    error "iOS legacy sing-box 1.11.4 配置 AI 分流规则不完整"
+  fi
+fi
 
 for index in "${!LINK_PATHS[@]}"; do
   link_path="${LINK_PATHS[$index]}"
@@ -232,9 +364,6 @@ for index in "${!LINK_PATHS[@]}"; do
     error "$link_label 结构或服务端字段不一致"
   fi
 done
-
-CONF_PATHS=("$SHADOWROCKET_CONFIG_FILE" "$SHADOWROCKET_MACOS_CONFIG_FILE")
-CONF_LABELS=("通用 Shadowrocket 配置" "macOS Shadowrocket 配置")
 
 for index in "${!CONF_PATHS[@]}"; do
   conf_path="${CONF_PATHS[$index]}"
@@ -256,17 +385,13 @@ for index in "${!CONF_PATHS[@]}"; do
   fi
 done
 
-if python3 - \
+CLIENT_ARTIFACT_KINDS_CSV="$(IFS=,; echo "${CLIENT_ARTIFACT_KINDS[*]}")"
+CLIENT_ARTIFACT_ROLES_CSV="$(IFS=,; echo "${CLIENT_ARTIFACT_ROLES[*]}")"
+if CLIENT_ARTIFACT_KINDS_CSV="$CLIENT_ARTIFACT_KINDS_CSV" CLIENT_ARTIFACT_ROLES_CSV="$CLIENT_ARTIFACT_ROLES_CSV" python3 - \
   "$SERVER_CONFIG" \
-  "$SINGBOX_CONFIG" \
-  "$MACOS_SINGBOX_CONFIG" \
-  "$MACOS_SINGBOX_MIXED_CONFIG" \
-  "$SHADOWROCKET_LINK_FILE" \
-  "$IOS_SHADOWROCKET_LINK_FILE" \
-  "$ANDROID_V2RAYNG_LINK_FILE" \
-  "$SHADOWROCKET_CONFIG_FILE" \
-  "$SHADOWROCKET_MACOS_CONFIG_FILE" 2>/dev/null <<'PY'
+  "${CLIENT_ARTIFACT_PATHS[@]}" 2>/dev/null <<'PY'
 import json
+import os
 import sys
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -275,9 +400,16 @@ from urllib.parse import parse_qs, unquote, urlsplit
     server_path,
     *client_paths,
 ) = sys.argv[1:]
-singbox_paths = client_paths[:3]
-link_paths = client_paths[3:6]
-conf_paths = client_paths[6:8]
+kinds = os.environ["CLIENT_ARTIFACT_KINDS_CSV"].split(",")
+roles = os.environ["CLIENT_ARTIFACT_ROLES_CSV"].split(",")
+if len(kinds) != len(client_paths) or len(roles) != len(client_paths):
+    raise SystemExit(1)
+paths_by_role = dict(zip(roles, client_paths))
+if len(paths_by_role) != len(client_paths):
+    raise SystemExit(1)
+singbox_paths = [path for kind, path in zip(kinds, client_paths) if kind in {"modern", "legacy"}]
+link_paths = [path for kind, path in zip(kinds, client_paths) if kind == "link"]
+conf_paths = [path for kind, path in zip(kinds, client_paths) if kind == "conf"]
 
 
 def fail(field):
@@ -387,13 +519,13 @@ for field, expected in server_expected.items():
     if any(item.get(field) != expected for item in all_values):
         fail(field)
 
-reference = singbox_values[0]
+reference = singbox_fields(paths_by_role["modern-primary"])
 for field in ("host", "fingerprint", "public_key"):
     expected = reference.get(field)
     if not expected or any(item.get(field) != expected for item in all_values):
         fail(field)
 
-reference_name = link_values[0].get("node_name")
+reference_name = link_fields(paths_by_role["link-primary"]).get("node_name")
 if not reference_name:
     fail("node_name")
 for item in link_values + conf_values:
@@ -401,17 +533,18 @@ for item in link_values + conf_values:
         fail("node_name")
 
 raw_links = [Path(path).read_bytes() for path in link_paths]
-if any(content != raw_links[0] for content in raw_links[1:]):
+primary_link = Path(paths_by_role["link-primary"]).read_bytes()
+if any(content != primary_link for content in raw_links):
     fail("VLESS 链接文件内容")
 
-generic_conf = Path(conf_paths[0]).read_text(encoding="utf-8")
-macos_conf = Path(conf_paths[1]).read_text(encoding="utf-8")
+generic_conf = Path(paths_by_role["conf-primary"]).read_text(encoding="utf-8")
+macos_conf = Path(paths_by_role["conf-macos"]).read_text(encoding="utf-8")
 if "Managed placeholder template for the portable Shadowrocket profile." not in generic_conf:
     fail("通用 Shadowrocket 模板标记")
 if "Managed placeholder template for the macOS Shadowrocket profile." not in macos_conf:
     fail("macOS Shadowrocket 模板标记")
 
-print("[ok] 八个客户端产物的关键字段一致")
+print("[ok] 九个客户端产物的关键字段一致")
 PY
 then
   ok "跨产物一致性校验通过"

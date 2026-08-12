@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 扫描 Git 候选文件；默认还会静默比对本地运行时凭据。
+# 扫描 Git 候选文件；受保护运行时凭据比对默认关闭。
 # 命中时只报告类别和候选文件路径，不回显疑似敏感值或引用值。
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,7 +22,7 @@ if [ "$SCOPE" != "tracked" ] && [ "$SCOPE" != "worktree" ] && [ "$SCOPE" != "sta
   exit 2
 fi
 
-RUNTIME_REFERENCE_SCAN="${RUNTIME_REFERENCE_SCAN:-yes}"
+RUNTIME_REFERENCE_SCAN="${RUNTIME_REFERENCE_SCAN:-no}"
 if [ "$RUNTIME_REFERENCE_SCAN" != "yes" ] && [ "$RUNTIME_REFERENCE_SCAN" != "no" ]; then
   echo "[error] RUNTIME_REFERENCE_SCAN 只能是 yes 或 no"
   exit 2
@@ -236,6 +236,7 @@ if runtime_reference_scan:
         root / "configs/client/singbox.json",
         root / "configs/client/macos_singbox.json",
         root / "configs/client/macos_singbox_mixed.json",
+        root / "configs/client/singbox-ios-legacy-1.11.4.json",
         root / "configs/client/shadowrocket_link.txt",
         root / "configs/client/ios_shadowrocket_vless_link.txt",
         root / "configs/client/android_v2rayng_vless_link.txt",

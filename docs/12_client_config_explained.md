@@ -5,10 +5,11 @@
 
 ## 1. 本轮生成的文件
 
-1. `templates/singbox_client_template.json`：sing-box 客户端配置模板。
-2. `templates/client_link_template.txt`：Shadowrocket / 通用 VLESS 导入链接模板。
-3. `templates/shadowrocket_client.conf.template`：通用完整 Shadowrocket 配置模板。
-4. `templates/shadowrocket_macos_ai_workflow.conf.template`：Shadowrocket macOS AI 工作流分流配置模板。
+1. `templates/singbox_client_template.json`：modern sing-box 客户端配置模板（typed DNS）。
+2. `templates/singbox_client_ios_legacy_1.11.4_template.json`：嵌入式 sing-box 1.11.4 手机客户端模板（address DNS）。
+3. `templates/client_link_template.txt`：Shadowrocket / 通用 VLESS 导入链接模板。
+4. `templates/shadowrocket_client.conf.template`：通用完整 Shadowrocket 配置模板。
+5. `templates/shadowrocket_macos_ai_workflow.conf.template`：Shadowrocket macOS AI 工作流分流配置模板。
 
 模板中只包含占位符，不包含真实 UUID、公钥、shortId 或服务器地址。
 
@@ -67,6 +68,7 @@ Windows PowerShell 需要改成 `$env:NODE_HOST="..."` 或 `$env:VPS_HOST="..."`
 
 ```bash
 VPS_HOST="<你的_VPS_IP或域名>" \
+ALLOW_REMOTE_OPERATIONS="yes" \
 RUN_BACKUP="no" \
 UPDATE_XRAY="no" \
 FETCH_REMOTE_CONFIG="yes" \
@@ -77,7 +79,7 @@ CONFIRM="yes" \
 bash scripts/update_node_and_clients.sh
 ```
 
-统一入口从 VPS 活跃配置读取服务端字段并派生 REALITY 公钥，一次生成三个 sing-box JSON、三个链接和两个 Shadowrocket conf，不另造或轮换凭据。默认不会备份、升级、重启、部署或修改本机网络。
+无开关运行时，统一入口默认不执行远端读取、健康检查或生成。上例显式授权只读访问 VPS 活跃配置并派生 REALITY 公钥，一次生成四个 sing-box JSON、三个链接和两个 Shadowrocket conf，不另造或轮换凭据，也不授权备份、升级、重启、部署或修改本机网络。
 
 只有在已经持有可信本地服务端镜像及其正确派生公钥时，才单独运行生成器。例如生成 TUN 配置：
 
@@ -96,12 +98,22 @@ bash scripts/generate_singbox_config.sh
 configs/client/singbox.json
 configs/client/macos_singbox.json
 configs/client/macos_singbox_mixed.json
+configs/client/singbox-ios-legacy-1.11.4.json
 ```
 
-这个文件已被 `.gitignore` 忽略，不会提交到 Git。
-它包含真实节点信息，不要截图或公开发送。
+前三个是 modern typed DNS；`singbox-ios-legacy-1.11.4.json` 按官方 v1.11.4 schema 生成，但未用 1.11.4 二进制验证运行兼容性。这些文件已被 `.gitignore` 忽略，不会提交到 Git。
+它们包含真实节点信息，不要截图或公开发送。
 
-如果你想手动生成，也可以按下面流程操作。
+如需单独生成 iOS legacy 产物：
+
+```bash
+NODE_HOST="<你的_VPS_IP或域名>" \
+XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
+SINGBOX_DNS_STYLE="legacy" \
+bash scripts/generate_singbox_config.sh
+```
+
+如果你想手动生成 modern 配置，也可以按下面流程操作。
 
 复制模板到本地真实配置文件：
 
@@ -533,23 +545,31 @@ timeout 20 tcpdump -ni any tcp port 443
 
 在 iPhone / iPad 上：
 
-1. 把 `configs/client/singbox.json` 传到手机，例如 AirDrop、iCloud Drive 或文件 App。
-2. 打开 `sing-box VT`。
-3. 在 `Profiles` 中导入该 JSON 文件。
-4. 启用 Profile。
-5. 首次启用时允许添加 VPN 配置。
+1. 确认 App 嵌入的 sing-box core 版本。
+2. core 1.11.4：可尝试把 schema-targeted 的 `configs/client/singbox-ios-legacy-1.11.4.json` 传到手机；新核心：传 `configs/client/singbox.json`。
+3. 打开 `sing-box VT`。
+4. 在 `Profiles` 中导入对应 JSON 文件。
+5. 启用 Profile。
+6. 首次启用时允许添加 VPN 配置。
 
 不同版本 UI 名称可能略有差异，但核心流程都是：导入 Profile -> 启用 Profile -> 开启代理/VPN。
 
 ### 配置兼容性警告
 
-如果客户端提示旧字段或配置不兼容，不要猜测具体版本边界，也不要启用兼容环境变量绕过。重新运行统一刷新入口，并用实际选中的 sing-box 二进制做只读检查：
+如果客户端提示旧字段或配置不兼容，不要猜测具体版本边界，也不要启用兼容环境变量绕过。嵌入式 core 1.11.4 可尝试 schema-targeted 的 `singbox-ios-legacy-1.11.4.json`；macOS / 新核心继续使用 modern `singbox.json`。重新运行统一刷新入口，并用实际选中的 sing-box 二进制做只读检查：
 
 ```bash
 bash scripts/validate_client_artifacts.sh
 ```
 
-当前模板和生成器使用带类型的 DNS server、有效域名解析器以及 route action；校验通过后，再在 sing-box VT 中重新导入 `configs/client/singbox.json`。导入本身不会自动连接。
+modern 模板和默认生成器使用带类型的 DNS server、有效域名解析器以及 route action；legacy 独立模板使用 1.11.x 的 `address` DNS 与 `dns.rules.outbound`。校验通过后，再按 core 版本导入对应文件。导入本身不会自动连接。
+
+legacy 结论依据官方 legacy DNS 文档、迁移/弃用说明，以及 SagerNet `v1.11.4` 标签下的 `option/dns.go`、`option/rule_dns.go` 和 `option/rule_action.go`。这些源码证明目标字段属于该版本 schema，但不替代真实 1.11.4 二进制或设备端运行验证：
+
+- https://sing-box.sagernet.org/configuration/dns/server/legacy/
+- https://sing-box.sagernet.org/migration/
+- https://sing-box.sagernet.org/deprecated/
+- https://github.com/SagerNet/sing-box/tree/v1.11.4/option
 
 ### sing-box 配置检查
 

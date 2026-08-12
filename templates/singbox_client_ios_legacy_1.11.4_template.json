@@ -1,0 +1,165 @@
+{
+  "log": {
+    "level": "${SINGBOX_LOG_LEVEL}",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "tag": "cloudflare",
+        "address": "https://1.1.1.1/dns-query",
+        "detour": "proxy"
+      },
+      {
+        "tag": "local",
+        "address": "local"
+      }
+    ],
+    "rules": [
+      {
+        "outbound": "any",
+        "server": "local"
+      }
+    ],
+    "final": "cloudflare"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "address": [
+        "172.18.0.1/30",
+        "fdfe:dcba:9876::1/126"
+      ],
+      "auto_route": true,
+      "strict_route": true
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "proxy",
+      "outbounds": [
+        "node-primary",
+        "direct"
+      ],
+      "default": "node-primary"
+    },
+    {
+      "type": "vless",
+      "tag": "node-primary",
+      "server": "${NODE_HOST}",
+      "server_port": ${NODE_PORT},
+      "uuid": "${XRAY_UUID}",
+      "flow": "${XRAY_FLOW}",
+      "packet_encoding": "xudp",
+      "tls": {
+        "enabled": true,
+        "server_name": "${XRAY_SERVER_NAME}",
+        "utls": {
+          "enabled": true,
+          "fingerprint": "${CLIENT_FINGERPRINT}"
+        },
+        "reality": {
+          "enabled": true,
+          "public_key": "${XRAY_REALITY_PUBLIC_KEY}",
+          "short_id": "${XRAY_REALITY_SHORT_ID}"
+        }
+      }
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "inbound": "tun-in",
+        "action": "sniff",
+        "timeout": "1s"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "domain_suffix": [
+          "openai.com",
+          "chatgpt.com",
+          "oaistatic.com",
+          "oaiusercontent.com",
+          "openrouter.ai",
+          "cursor.com",
+          "cursor.sh",
+          "anthropic.com",
+          "claude.ai",
+          "google.com",
+          "googleapis.com",
+          "gstatic.com",
+          "github.com",
+          "githubusercontent.com",
+          "githubassets.com",
+          "githubcopilot.com"
+        ],
+        "outbound": "proxy"
+      },
+      {
+        "domain_suffix": [
+          "weixin.qq.com",
+          "wx.qq.com",
+          "wechat.com",
+          "wechatapp.com",
+          "mp.weixin.qq.com",
+          "mp.weixinbridge.com",
+          "wximg.com",
+          "wxab.cn",
+          "tenpay.com",
+          "wework.com",
+          "tencentgames.com",
+          "qcloud.com",
+          "qcloudcdn.com"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "rule_set": [
+          "geosite-cn",
+          "geoip-cn"
+        ],
+        "outbound": "direct"
+      },
+      {
+        "ip_cidr": [
+          "10.0.0.0/8",
+          "100.64.0.0/10",
+          "127.0.0.0/8",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.168.0.0/16",
+          "fc00::/7",
+          "fe80::/10"
+        ],
+        "outbound": "direct"
+      }
+    ],
+    "rule_set": [
+      {
+        "type": "remote",
+        "tag": "geosite-cn",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs",
+        "download_detour": "proxy"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip-cn",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs",
+        "download_detour": "proxy"
+      }
+    ],
+    "final": "proxy",
+    "auto_detect_interface": true
+  }
+}

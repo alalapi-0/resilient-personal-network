@@ -21,7 +21,7 @@
 - 已补齐 Windows v2rayN 配置包和 PowerShell 操作说明。
 - 已把 macOS、Windows、Linux/VPS 的命令写法拆分清楚，避免跨系统复制出错。
 - 已加入 AI 工作流优先级分流策略：AI / 搜索 / GitHub 显式代理，大陆域名和 IP 直连。
-- 已新增默认安全的统一刷新入口，可从活跃 VPS 配置派生并校验八个客户端产物；备份和升级保持显式关闭。
+- 已新增默认安全的统一刷新入口，可从活跃 VPS 配置派生并校验九个客户端产物；备份和升级保持显式关闭。
 
 ## 本项目不做什么
 为了保证后续可控迭代，本轮明确不做以下事情：
@@ -91,6 +91,7 @@ resilient-personal-network/
 ├── templates/
 │   ├── xray_server_vless_reality.json.template
 │   ├── singbox_client_template.json
+│   ├── singbox_client_ios_legacy_1.11.4_template.json
 │   ├── shadowrocket_client.conf.template
 │   ├── shadowrocket_macos_ai_workflow.conf.template
 │   ├── client_link_template.txt
@@ -292,6 +293,7 @@ SSH_PORT="22" \
 SSH_AUTH_MODE="publickey" \
 SSH_ASKPASS_MODE="macos" \
 SSH_KEYCHAIN_MODE="macos" \
+ALLOW_REMOTE_OPERATIONS="yes" \
 RUN_BACKUP="no" \
 UPDATE_XRAY="no" \
 FETCH_REMOTE_CONFIG="yes" \
@@ -308,18 +310,19 @@ Linux / Git Bash / WSL 使用相同的 Bash 环境变量语法，但应设置 `S
 
 1. 只读拉取 VPS 当前活跃的 Xray 配置到本地忽略目录。
 2. 在 VPS 上从该配置的 REALITY 私钥派生客户端公钥，不另造或轮换凭据。
-3. 在 mode `700` 临时目录中生成并校验全部八个客户端产物。
+3. 在 mode `700` 临时目录中生成并校验全部九个客户端产物。
 4. 校验通过后以 mode `600` 原子替换本地忽略文件。
 5. 执行只读健康检查。
 
-这组显式参数不会远端备份、升级、重启、部署、恢复、修改防火墙或轮换凭据，也不会启动 mixed/TUN、修改系统代理/VPN 或复制链接到剪贴板。`RUN_BACKUP=yes` 和 `UPDATE_XRAY=yes` 都属于另行授权的维护操作，不是客户端刷新的默认步骤。
+不带开关运行该入口时，所有远端读取、健康检查和生成动作都默认关闭。上例的 `ALLOW_REMOTE_OPERATIONS=yes` 只确认其中列出的远端读取；它不授权备份、升级、重启、部署、恢复、修改防火墙或轮换凭据，也不会启动 mixed/TUN、修改系统代理/VPN 或复制链接到剪贴板。`RUN_BACKUP=yes` 和 `UPDATE_XRAY=yes` 仍属于另行授权的维护操作。
 
-生成后的八个客户端产物位于：
+生成后的九个客户端产物位于：
 
 ```text
 configs/client/singbox.json
 configs/client/macos_singbox.json
 configs/client/macos_singbox_mixed.json
+configs/client/singbox-ios-legacy-1.11.4.json
 configs/client/shadowrocket_link.txt
 configs/client/ios_shadowrocket_vless_link.txt
 configs/client/android_v2rayng_vless_link.txt
@@ -327,7 +330,7 @@ configs/client/shadowrocket.conf
 configs/client/shadowrocket-macos.conf
 ```
 
-`singbox.json` 是通用 TUN/GUI 导入配置；`macos_singbox.json` 和 `macos_singbox_mixed.json` 分别供 macOS CLI 的 TUN 与 mixed 模式使用。`shadowrocket.conf` 是不带 macOS 本地监听器的通用完整 Shadowrocket 配置，`shadowrocket-macos.conf` 是包含 macOS 本地 HTTP/SOCKS 监听设置的版本。三个链接文件内容一致，只按设备用途分别命名。
+`singbox.json` 是通用 modern TUN/GUI 导入配置（typed DNS，面向 sing-box 1.12+；当前测试记录的本机校验器为 1.13.14）；`macos_singbox.json` 和 `macos_singbox_mixed.json` 分别供 macOS CLI 的 TUN 与 mixed 模式使用。`singbox-ios-legacy-1.11.4.json` 是依据官方 v1.11.4 schema 生成的目标配置（address 形态 DNS，无 `type: https` / `type: local`），但本仓库没有用 1.11.4 二进制验证其运行兼容性。`shadowrocket.conf` 是不带 macOS 本地监听器的通用完整 Shadowrocket 配置，`shadowrocket-macos.conf` 是包含 macOS 本地 HTTP/SOCKS 监听设置的版本。三个链接文件内容一致，只按设备用途分别命名。
 
 这些文件包含真实节点信息，已被 `.gitignore` 忽略，不要提交、截图或公开分享。统一只读校验：
 
@@ -382,15 +385,27 @@ XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
 bash scripts/generate_singbox_config.sh
 ```
 
-默认生成 `tun` 模式，适合 sing-box VT 在 iPhone / iPad / Mac 上作为 VPN Profile 使用。
+默认生成 modern `tun` 配置（typed DNS），适合 macOS / 新版 sing-box 核心。
+仍使用嵌入式 sing-box core 1.11.4 的手机客户端应改用独立 legacy 产物：
+
+```bash
+NODE_HOST="<你的_VPS_IP或域名>" \
+XRAY_REALITY_PUBLIC_KEY="<REALITY公钥>" \
+SINGBOX_DNS_STYLE="legacy" \
+bash scripts/generate_singbox_config.sh
+```
+
+输出为 `configs/client/singbox-ios-legacy-1.11.4.json`（address 形态 DNS）。不要把 modern 主模板改回 legacy DNS，也不要用兼容环境变量绕过解码失败。
 生成的配置内置 AI 工作流优先级分流：OpenAI / ChatGPT、OpenRouter、Cursor、Claude / Anthropic、Google 搜索和 GitHub 显式走代理；大陆域名和大陆 IP 直连，避免中国流量绕到 VPS 再回中国。
-如果 sing-box VT 提示旧字段或配置不兼容，请重新运行统一刷新和 `validate_client_artifacts.sh`，不要启用兼容绕过。
+如果 sing-box VT 提示旧字段或配置不兼容，请确认 core 版本：1.11.4 可尝试导入 schema-targeted legacy 产物，1.12+ / 1.13.x 导入 modern `singbox.json`；legacy 的结构校验不等于设备端运行证明，不要启用兼容绕过。
 
 生成后检查：
 
 ```bash
 grep -nF '${' configs/client/singbox.json
 jq empty configs/client/singbox.json
+grep -nF '${' configs/client/singbox-ios-legacy-1.11.4.json
+jq empty configs/client/singbox-ios-legacy-1.11.4.json
 ```
 
 如果 `grep -nF '${'` 没有输出，才表示占位符替换完毕。
