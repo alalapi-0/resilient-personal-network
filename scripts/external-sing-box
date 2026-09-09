@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# The old tools path is a compatibility symlink to this tracked entry.
+if [ ! -f "$SCRIPT_DIR/lib/storage_runtime.sh" ]; then
+  SCRIPT_DIR="$(cd "$SCRIPT_DIR/../../scripts" && pwd -P)"
+fi
+source "$SCRIPT_DIR/lib/storage_runtime.sh"
+rpn_storage_prepare || exit 78
+exec "$RPN_ACTUAL_BINARY" "$@"

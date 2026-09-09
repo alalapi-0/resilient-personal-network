@@ -67,13 +67,9 @@ for command_name in jq python3 git; do
   fi
 done
 
-if [ -n "${SING_BOX_BIN:-}" ]; then
-  SELECTED_SING_BOX_BIN="$SING_BOX_BIN"
-elif command -v sing-box >/dev/null 2>&1; then
-  SELECTED_SING_BOX_BIN="$(command -v sing-box)"
-else
-  SELECTED_SING_BOX_BIN="$REPO_ROOT/tools/sing-box/sing-box"
-fi
+source "$SCRIPT_DIR/lib/storage_runtime.sh"
+rpn_storage_prepare || exit 78
+SELECTED_SING_BOX_BIN="$SING_BOX_BIN"
 
 if [ ! -x "$SELECTED_SING_BOX_BIN" ]; then
   echo "[error] 找不到可执行的 sing-box 校验器"

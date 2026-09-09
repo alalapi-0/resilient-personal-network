@@ -7,23 +7,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-PROJECT_SING_BOX_BIN="$REPO_ROOT/tools/sing-box/sing-box"
-if [ -n "${SING_BOX_BIN:-}" ]; then
-  SING_BOX_SOURCE="SING_BOX_BIN"
-elif command -v sing-box >/dev/null 2>&1; then
-  SING_BOX_BIN="$(command -v sing-box)"
-  SING_BOX_SOURCE="PATH"
-else
-  SING_BOX_BIN="$PROJECT_SING_BOX_BIN"
-  SING_BOX_SOURCE="project fallback"
-fi
+source "$SCRIPT_DIR/lib/storage_runtime.sh"
+rpn_storage_prepare || exit 78
+SING_BOX_SOURCE="guarded external runtime"
 TUN_CONFIG="${TUN_CONFIG:-$REPO_ROOT/configs/client/macos_singbox.json}"
 MIXED_CONFIG="${MIXED_CONFIG:-$REPO_ROOT/configs/client/macos_singbox_mixed.json}"
 
 echo "== local sing-box binary =="
 if [ ! -x "$SING_BOX_BIN" ]; then
   echo "[error] 找不到可执行 sing-box：$SING_BOX_BIN"
-  echo "[hint] 可设置 SING_BOX_BIN=绝对路径，或将 sing-box 放入 PATH，或准备项目内 tools/sing-box/sing-box"
+  echo "[hint] 请接回登记的 AI_WORK_SSD 并检查 docs/storage_runtime.md；不会改用内盘程序"
   exit 1
 fi
 echo "[info] selected from $SING_BOX_SOURCE: $SING_BOX_BIN"

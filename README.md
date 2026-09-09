@@ -22,6 +22,14 @@
 - 已把 macOS、Windows、Linux/VPS 的命令写法拆分清楚，避免跨系统复制出错。
 - 已加入 AI 工作流优先级分流策略：AI / 搜索 / GitHub 显式代理，大陆域名和 IP 直连。
 - 已新增默认安全的统一刷新入口，可从活跃 VPS 配置派生并校验九个客户端产物；备份和升级保持显式关闭。
+- 本机独立 sing-box 程序已迁移到身份守卫保护的 AI_WORK_SSD；默认本地校验不再回退 PATH/内盘，真实配置与密钥保持原位保护。
+
+本节是仓库维护阶段的唯一状态摘要，供所有者、开发 Agent 与 Hub 读取；已验收的运行时或维护阶段变化时更新。它不替代 VPS 活跃配置，不表示本轮重新验证过真实网络。外盘入口和恢复方式见 [存储维护](docs/storage_runtime.md)。
+
+```bash
+bash scripts/external-sing-box version
+env -i PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin bash scripts/test_client_generation.sh
+```
 
 ## 本项目不做什么
 为了保证后续可控迭代，本轮明确不做以下事情：
@@ -491,25 +499,14 @@ bash scripts/check_macos_singbox.sh
 bash scripts/check_local_singbox_macos.sh
 ```
 
-检查脚本依次使用 `SING_BOX_BIN` 显式路径、`PATH` 中的 `sing-box`、项目内 `tools/sing-box/sing-box` 备用文件。
-不确定 CLI 位置时可运行 `command -v sing-box`；没有输出就表示当前 `PATH` 中没有它，不要假定 Homebrew 已安装。
-自定义安装可显式设置：
+本机检查脚本使用登记的外盘程序，先验证磁盘身份，不再从 PATH 或内盘自动选取替代品。`SING_BOX_BIN` 只接受登记程序或本项目守卫入口；这是当前存储治理要求对旧发现顺序的明确覆盖。
+需要把入口交给其他终端命令时设置：
 
 ```bash
-export SING_BOX_BIN="/absolute/path/to/sing-box"
+export SING_BOX_BIN="$PWD/scripts/external-sing-box"
 ```
 
-如果 CLI 已在 `PATH` 中，保存检测到的路径；否则选用项目内备用文件：
-
-```bash
-if [ -z "${SING_BOX_BIN:-}" ]; then
-  if command -v sing-box >/dev/null 2>&1; then
-    export SING_BOX_BIN="$(command -v sing-box)"
-  else
-    export SING_BOX_BIN="$PWD/tools/sing-box/sing-box"
-  fi
-fi
-```
+原 `tools/sing-box/sing-box` 仅是该入口的兼容链接。缺盘时先接回正确外盘；不要安装内盘副本绕过错误。以下连接命令仍需独立明确授权，本轮只做离线占位生成和只读 check。
 
 低风险 mixed 连接（只开本地 `127.0.0.1:2080` 代理，不自动接管系统流量）：
 
