@@ -29,7 +29,11 @@
 ```bash
 bash scripts/external-sing-box version
 env -i PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin bash scripts/test_client_generation.sh
+# 仅 stdout 输出脱敏 JSON，可重定向为本地保存的验证结果。
+env -i PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin bash scripts/test_client_generation.sh --json
 ```
+
+JSON 记录本次隔离 fixture 的起止时间、退出状态、实际产物和负例计数，以及所用代码和现代验证二进制的指纹。失败或未执行的检查保持原状态；旧版 1.11.4 的 schema 检查与实际二进制检查分开记录。这些结果用于追踪客户端生成与验证能力，不代表真实网络连通、线上配置更新或私人节点健康。
 
 ## 本项目不做什么
 为了保证后续可控迭代，本轮明确不做以下事情：

@@ -6,8 +6,19 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [ "${1:-}" = "--json" ]; then
+  # Only PATH crosses the boundary; fixture/config overrides are never inherited.
+  exec env -i PATH="$PATH" python3 "$SCRIPT_DIR/lib/client_fixture_result.py"
+fi
 cd "$REPO_ROOT"
 umask 077
+
+result_event() {
+  if [ -n "${RPN_RESULT_FD:-}" ]; then
+    printf '%s\n' "$1" >&"$RPN_RESULT_FD"
+  fi
+}
+result_event stage:prerequisites
 
 for command_name in jq python3 mktemp; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -16,6 +27,7 @@ for command_name in jq python3 mktemp; do
   fi
 done
 
+result_event stage:storage
 source "$SCRIPT_DIR/lib/storage_runtime.sh"
 rpn_storage_prepare || exit 78
 SELECTED_SING_BOX_BIN="$SING_BOX_BIN"
@@ -25,18 +37,32 @@ if [ ! -x "$SELECTED_SING_BOX_BIN" ]; then
   exit 1
 fi
 
-printf '[info] modern validator: '
-"$SELECTED_SING_BOX_BIN" version 2>/dev/null | head -n 1
+result_event stage:modern_version
+MODERN_VERSION="$("$SELECTED_SING_BOX_BIN" version 2>/dev/null | head -n 1)"
+printf '[info] modern validator: %s\n' "$MODERN_VERSION"
+result_event "version:$MODERN_VERSION"
+result_event stage:fixture_setup
 
-TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/rpn-client-generation.XXXXXX")"
-TEST_ROOT="$(cd "$TEST_ROOT" && pwd -P)"
-chmod 700 "$TEST_ROOT"
-
+TEST_ROOT=""
 cleanup() {
-  rm -rf "$TEST_ROOT"
+  local original_exit=$?
+  if [ -z "$TEST_ROOT" ]; then
+    result_event cleanup:not_created
+  elif rm -rf "$TEST_ROOT" && [ ! -e "$TEST_ROOT" ]; then
+    result_event cleanup:pass
+  else
+    result_event cleanup:fail
+    if [ "$original_exit" -eq 0 ]; then original_exit=1; fi
+  fi
+  exit "$original_exit"
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM HUP
+TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/rpn-client-generation.XXXXXX")"
+result_event cleanup:pending
+TEST_ROOT_RESOLVED="$(cd "$TEST_ROOT" && pwd -P)"
+TEST_ROOT="$TEST_ROOT_RESOLVED"
+chmod 700 "$TEST_ROOT"
 
 SERVER_FIXTURE="$TEST_ROOT/server.json"
 CLIENT_DIR="$TEST_ROOT/client"
@@ -98,7 +124,9 @@ COMMON_GENERATOR_ENV=(
   "ALLOW_EXTERNAL_OUTPUT=yes"
 )
 
+result_event stage:generation
 CLIENT_ARTIFACT_MANIFEST_ONLY=yes source "$SCRIPT_DIR/validate_client_artifacts.sh"
+result_event "manifest_count:${#CLIENT_ARTIFACT_MANIFEST[@]}"
 for manifest_entry in "${CLIENT_ARTIFACT_MANIFEST[@]}"; do
   IFS='|' read -r artifact_kind artifact_mode artifact_basename artifact_generator artifact_role artifact_label <<EOF
 $manifest_entry
@@ -133,6 +161,8 @@ EOF
       ;;
     *) echo "[error] fixture 清单生成器无效"; exit 1 ;;
   esac
+  [ -f "$artifact_path" ]
+  result_event artifact:complete
 done
 
 export FIXTURE_NODE_HOST
@@ -140,6 +170,7 @@ export FIXTURE_PUBLIC_KEY
 export FIXTURE_UUID
 export FIXTURE_SHORT_ID
 export FIXTURE_SERVER_NAME
+result_event stage:modern_template
 RENDERED_TEMPLATE="$TEST_ROOT/rendered-singbox-template.json"
 python3 - \
   "$REPO_ROOT/templates/singbox_client_template.json" \
@@ -182,6 +213,8 @@ PY
 chmod 600 "$RENDERED_TEMPLATE"
 "$SELECTED_SING_BOX_BIN" check -c "$RENDERED_TEMPLATE" >/dev/null 2>&1
 
+result_event positive:modern_template
+result_event stage:legacy_schema
 RENDERED_LEGACY_TEMPLATE="$TEST_ROOT/rendered-singbox-ios-legacy-template.json"
 python3 - \
   "$REPO_ROOT/templates/singbox_client_ios_legacy_1.11.4_template.json" \
@@ -225,6 +258,7 @@ with Path(sys.argv[3]).open("r", encoding="utf-8") as generated_file:
 Path(sys.argv[2]).write_text(content, encoding="utf-8")
 PY
 chmod 600 "$RENDERED_LEGACY_TEMPLATE"
+result_event positive:legacy_schema
 echo "[info] 证据声明：未执行 1.11.4 sing-box check（本机无该版本二进制）"
 
 validate_fixture() {
@@ -238,16 +272,21 @@ validate_fixture() {
 }
 
 expect_failure() {
-  local label="$1"
-  shift
+  local case_id="$1"
+  local label="$2"
+  shift 2
+  result_event "stage:$case_id"
   if "$@" >/dev/null 2>&1; then
     echo "[error] 失败用例未被拒绝：$label"
     exit 1
   fi
+  result_event "negative:$case_id"
   echo "[ok] 失败用例已拒绝：$label"
 }
 
+result_event stage:artifact_validation
 validate_fixture >/dev/null
+result_event positive:artifact_validation
 
 ORIGINAL_MANIFEST=("${CLIENT_ARTIFACT_MANIFEST[@]}")
 FIRST_MANIFEST_ENTRY=""
@@ -256,18 +295,18 @@ for manifest_entry in "${CLIENT_ARTIFACT_MANIFEST[@]}"; do
   break
 done
 CLIENT_ARTIFACT_MANIFEST+=("$FIRST_MANIFEST_ENTRY")
-expect_failure "重复清单定义" validate_client_artifact_manifest_definition
+expect_failure duplicate_manifest "重复清单定义" validate_client_artifact_manifest_definition
 CLIENT_ARTIFACT_MANIFEST=("${ORIGINAL_MANIFEST[@]}")
 
-expect_failure "无效 DNS style" env "${COMMON_GENERATOR_ENV[@]}" \
+expect_failure invalid_dns_style "无效 DNS style" env "${COMMON_GENERATOR_ENV[@]}" \
   SERVER_CONFIG="$SERVER_FIXTURE" OUTPUT_FILE="$TEST_ROOT/invalid-style.json" \
   SINGBOX_DNS_STYLE=invalid bash "$SCRIPT_DIR/generate_singbox_config.sh"
-expect_failure "仓库外输出缺少 fixture 授权" env \
+expect_failure unauthorized_external_output "仓库外输出缺少 fixture 授权" env \
   NODE_HOST="$FIXTURE_NODE_HOST" XRAY_REALITY_PUBLIC_KEY="$FIXTURE_PUBLIC_KEY" \
   CLIENT_FINGERPRINT=chrome NODE_NAME="$FIXTURE_NODE_NAME" \
   SERVER_CONFIG="$SERVER_FIXTURE" OUTPUT_FILE="$TEST_ROOT/external-default.json" \
   SINGBOX_DNS_STYLE=modern SINGBOX_MODE=tun bash "$SCRIPT_DIR/generate_singbox_config.sh"
-expect_failure "legacy mixed 组合" env "${COMMON_GENERATOR_ENV[@]}" \
+expect_failure legacy_mixed "legacy mixed 组合" env "${COMMON_GENERATOR_ENV[@]}" \
   SERVER_CONFIG="$SERVER_FIXTURE" OUTPUT_FILE="$TEST_ROOT/legacy-mixed.json" \
   SINGBOX_DNS_STYLE=legacy SINGBOX_MODE=mixed bash "$SCRIPT_DIR/generate_singbox_config.sh"
 
@@ -276,18 +315,18 @@ SAFE_SYMLINK_OUTPUT="$TEST_ROOT/symlink-output.json"
 : > "$SAFE_SYMLINK_TARGET"
 chmod 600 "$SAFE_SYMLINK_TARGET"
 ln -s "$SAFE_SYMLINK_TARGET" "$SAFE_SYMLINK_OUTPUT"
-expect_failure "符号链接输出目标" env "${COMMON_GENERATOR_ENV[@]}" \
+expect_failure symlink_output "符号链接输出目标" env "${COMMON_GENERATOR_ENV[@]}" \
   SERVER_CONFIG="$SERVER_FIXTURE" OUTPUT_FILE="$SAFE_SYMLINK_OUTPUT" \
   SINGBOX_DNS_STYLE=modern SINGBOX_MODE=tun bash "$SCRIPT_DIR/generate_singbox_config.sh"
 
 mkdir -m 700 "$TEST_ROOT/real-output-parent"
 ln -s "$TEST_ROOT/real-output-parent" "$TEST_ROOT/symlink-output-parent"
-expect_failure "祖先目录符号链接" env "${COMMON_GENERATOR_ENV[@]}" \
+expect_failure symlink_ancestor "祖先目录符号链接" env "${COMMON_GENERATOR_ENV[@]}" \
   SERVER_CONFIG="$SERVER_FIXTURE" OUTPUT_FILE="$TEST_ROOT/symlink-output-parent/config.json" \
   SINGBOX_DNS_STYLE=modern SINGBOX_MODE=tun bash "$SCRIPT_DIR/generate_singbox_config.sh"
 
 ln -s "$TEST_ROOT/does-not-exist" "$TEST_ROOT/dangling-output.json"
-expect_failure "悬空符号链接输出" env "${COMMON_GENERATOR_ENV[@]}" \
+expect_failure dangling_symlink "悬空符号链接输出" env "${COMMON_GENERATOR_ENV[@]}" \
   SERVER_CONFIG="$SERVER_FIXTURE" OUTPUT_FILE="$TEST_ROOT/dangling-output.json" \
   SINGBOX_DNS_STYLE=modern SINGBOX_MODE=tun bash "$SCRIPT_DIR/generate_singbox_config.sh"
 
@@ -301,24 +340,28 @@ EOF
 done
 install -m 600 "$MACOS_SINGBOX_MIXED_CONFIG" "$MISINDEXED_DIR/singbox.json"
 install -m 600 "$SINGBOX_CONFIG" "$MISINDEXED_DIR/macos_singbox_mixed.json"
-expect_failure "产物索引错位" validate_fixture CLIENT_OUTPUT_DIR="$MISINDEXED_DIR"
+expect_failure misindexed_artifacts "产物索引错位" validate_fixture CLIENT_OUTPUT_DIR="$MISINDEXED_DIR"
 
 chmod 644 "$IOS_LEGACY_SINGBOX_CONFIG"
-expect_failure "不安全文件权限" validate_fixture
+expect_failure unsafe_permissions "不安全文件权限" validate_fixture
 chmod 600 "$IOS_LEGACY_SINGBOX_CONFIG"
 
 mv "$ANDROID_V2RAYNG_LINK_FILE" "$ANDROID_V2RAYNG_LINK_FILE.missing"
-expect_failure "缺失产物" validate_fixture
+expect_failure missing_artifact "缺失产物" validate_fixture
 mv "$ANDROID_V2RAYNG_LINK_FILE.missing" "$ANDROID_V2RAYNG_LINK_FILE"
 
 install -m 600 "$SINGBOX_CONFIG" "$CLIENT_DIR/unexpected.json"
-expect_failure "额外产物" validate_fixture
+expect_failure unexpected_artifact "额外产物" validate_fixture
 unlink "$CLIENT_DIR/unexpected.json"
 
 TRANSACTION_SUFFIX=".previous.12345"
 install -m 600 "$SINGBOX_CONFIG" "$CLIENT_DIR/.singbox.json$TRANSACTION_SUFFIX"
+result_event stage:transaction_backup
 validate_fixture TRANSACTION_BACKUP_SUFFIX="$TRANSACTION_SUFFIX" >/dev/null
-expect_failure "事务备份默认仍视为额外产物" validate_fixture
+result_event positive:transaction_backup
+expect_failure unapproved_transaction_backup "事务备份默认仍视为额外产物" validate_fixture
 
 echo "[ok] 占位 fixture 的九个客户端产物通过生成与兼容性校验"
 echo "[done] client generation fixture test passed"
+
+result_event stage:complete
