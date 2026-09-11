@@ -17,6 +17,7 @@ configs/client/.*.tmp.*
 nodes/*/*.env
 nodes/*/client*.json
 docs/tree_snapshot.txt
+.hub/status.json
 
 !logs/.gitkeep
 !backups/.gitkeep

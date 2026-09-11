@@ -1,0 +1,38 @@
+schema_version: '2.0'
+project_id: resilient-personal-network
+source_refs:
+- id: state
+  path: README.md
+  format: markdown
+  role: current_state
+metric_export:
+  entry: scripts/export_hub_metric_snapshot.py
+  snapshot: .hub/status.json
+mapping: {}
+unknown_fields:
+  current_work.objective: The repository-stage summary is prose and is not a typed current-work field.
+  current_work.phase: Maintenance-stage prose does not define one typed phase value.
+  current_work.round: Acceptance rounds are documented history, not one current round field.
+  current_work.status: The summary does not publish one exact typed project status.
+  current_work.completed: Completed maintenance steps are not whole-project completion.
+  current_work.accepted: A saved fixture run is not an independent whole-project acceptance boolean.
+  current_work.next_action: Maintenance suggestions do not define one canonical next action.
+  current_work.owner_role: The summary does not publish one current owner-role field.
+  progress.completed: Fixture cases, artifacts, and documented steps are not a homogeneous numerator.
+  progress.total: The operations repository has no stable homogeneous completion denominator.
+  progress.counting_basis: Counting bases remain attached to each metric row.
+  progress.milestones: Stage bullets and round sections are not a typed current milestone array.
+  blockers: Excluded scope is prose and is not transformed into typed blocker records.
+  verification.status: The saved isolated fixture result is not one current whole-project verification status.
+  verification.evidence_refs: Evidence stays in the external saved result and scoped metrics.
+  verification.accepted_basis: No current whole-project accepted basis is published.
+  delivery.status: Local generation capability and remote deployment are independent facts.
+  delivery.remote: Real hosts and remote configuration are protected and never published here.
+  delivery.branch: The summary does not publish one current delivery branch.
+  delivery.commit: The summary does not identify one current delivery commit.
+  delivery.receipt_ref: The summary does not publish one current delivery receipt.
+validation_entry:
+- bash -n scripts/*.sh scripts/lib/*.sh
+- env -i PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin bash scripts/test_client_generation.sh
+  --json
+max_read_age_seconds: 604800
