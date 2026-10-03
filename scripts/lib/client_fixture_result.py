@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Safe, optional result adapter for the existing placeholder fixture run."""
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -12,10 +13,13 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[2]
-BINARY = Path('/Volumes/AI_WORK_SSD/Runtimes/resilient-personal-network/sing-box')
+BINARY = (Path('/home/alalapi/Runtimes/resilient-personal-network/sing-box')
+          if sys.platform == 'linux'
+          else Path('/Volumes/AI_WORK_SSD/Runtimes/resilient-personal-network/sing-box'))
 SOURCES = (
     'scripts/test_client_generation.sh', 'scripts/lib/client_fixture_result.py',
     'scripts/lib/storage_runtime.sh', 'scripts/external-sing-box',
+    'scripts/lib/storage_runtime_macos.sh', 'scripts/lib/linux_storage_runtime.py',
     'scripts/generate_singbox_config.sh', 'scripts/generate_shadowrocket_link.sh',
     'scripts/generate_shadowrocket_config.sh', 'scripts/generate_shadowrocket_macos_config.sh',
     'scripts/validate_client_artifacts.sh', 'scripts/validate_xray_config.sh',
@@ -53,8 +57,16 @@ def code_snapshot(root):
 
 def optional_hash(path):
     try:
+        if sys.platform == 'linux':
+            # Reject redirected runtime paths before opening them for evidence.
+            if path != BINARY:
+                return None
+            spec = importlib.util.spec_from_file_location('rpn_linux_identity', ROOT / 'scripts/lib/linux_storage_runtime.py')
+            guard = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(guard)
+            guard.canonical(path, executable=True)
         return sha_file(path)
-    except OSError:
+    except (OSError, ValueError, subprocess.SubprocessError):
         return None
 
 

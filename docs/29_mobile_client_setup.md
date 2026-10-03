@@ -65,7 +65,7 @@ bash scripts/validate_client_artifacts.sh
 该命令检查：
 
 1. 服务端镜像与九个客户端文件存在且权限正确。
-2. 三个 modern sing-box JSON 通过 `jq` 和实际选择的 `sing-box check`（本次测试记录为 1.13.14）。
+2. 三个 modern sing-box JSON 通过 `jq` 和实际选择的 `sing-box check`（当前 Linux 校验器为受身份守卫保护的 sing-box 1.12.3）。
 3. iOS legacy 产物通过 schema 断言（无 typed DNS；含 address + outbound DNS 规则）；本机无 1.11.4 二进制时明确声明未执行该版本 `sing-box check`。
 4. 三个 VLESS 链接均为单行并与服务端字段一致。
 5. 两个 Shadowrocket 配置包含相同节点字段和必需分流规则。

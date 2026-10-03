@@ -22,15 +22,15 @@
 - 已把 macOS、Windows、Linux/VPS 的命令写法拆分清楚，避免跨系统复制出错。
 - 已加入 AI 工作流优先级分流策略：AI / 搜索 / GitHub 显式代理，大陆域名和 IP 直连。
 - 已新增默认安全的统一刷新入口，可从活跃 VPS 配置派生并校验九个客户端产物；备份和升级保持显式关闭。
-- 本机独立 sing-box 程序已迁移到身份守卫保护的 AI_WORK_SSD；默认本地校验不再回退 PATH/内盘，真实配置与密钥保持原位保护。
+- 本机 Linux 校验使用身份守卫保护的独立 sing-box 1.12.3；原 macOS 外盘守卫按原始字节保留。入口不回退 PATH 或仓库二进制，真实配置与密钥保持原位保护。
 
-本节是仓库维护阶段的唯一状态摘要，供所有者、开发 Agent 与 Hub 读取；已验收的运行时或维护阶段变化时更新。它不替代 VPS 活跃配置，不表示本轮重新验证过真实网络。外盘入口和恢复方式见 [存储维护](docs/storage_runtime.md)。
+本节是仓库维护阶段的唯一状态摘要，供所有者、开发 Agent 与 Hub 读取；已验收的运行时或维护阶段变化时更新。它不替代 VPS 活跃配置，不表示本轮重新验证过真实网络。Linux 和保留的 macOS 入口见 [存储维护](docs/storage_runtime.md)。
 
 ```bash
 bash scripts/external-sing-box version
-env -i PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin bash scripts/test_client_generation.sh
+env -i PATH=/usr/bin:/bin bash scripts/test_client_generation.sh
 # 仅 stdout 输出脱敏 JSON，可重定向为本地保存的验证结果。
-env -i PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin bash scripts/test_client_generation.sh --json
+env -i PATH=/usr/bin:/bin bash scripts/test_client_generation.sh --json
 ```
 
 JSON 记录本次隔离 fixture 的起止时间、退出状态、实际产物和负例计数，以及所用代码和现代验证二进制的指纹。失败或未执行的检查保持原状态；旧版 1.11.4 的 schema 检查与实际二进制检查分开记录。这些结果用于追踪客户端生成与验证能力，不代表真实网络连通、线上配置更新或私人节点健康。
@@ -342,7 +342,7 @@ configs/client/shadowrocket.conf
 configs/client/shadowrocket-macos.conf
 ```
 
-`singbox.json` 是通用 modern TUN/GUI 导入配置（typed DNS，面向 sing-box 1.12+；当前测试记录的本机校验器为 1.13.14）；`macos_singbox.json` 和 `macos_singbox_mixed.json` 分别供 macOS CLI 的 TUN 与 mixed 模式使用。`singbox-ios-legacy-1.11.4.json` 是依据官方 v1.11.4 schema 生成的目标配置（address 形态 DNS，无 `type: https` / `type: local`），但本仓库没有用 1.11.4 二进制验证其运行兼容性。`shadowrocket.conf` 是不带 macOS 本地监听器的通用完整 Shadowrocket 配置，`shadowrocket-macos.conf` 是包含 macOS 本地 HTTP/SOCKS 监听设置的版本。三个链接文件内容一致，只按设备用途分别命名。
+`singbox.json` 是通用 modern TUN/GUI 导入配置（typed DNS，面向 sing-box 1.12+；当前 Linux 校验器为受身份守卫保护的 sing-box 1.12.3）；`macos_singbox.json` 和 `macos_singbox_mixed.json` 分别供 macOS CLI 的 TUN 与 mixed 模式使用。`singbox-ios-legacy-1.11.4.json` 是依据官方 v1.11.4 schema 生成的目标配置（address 形态 DNS，无 `type: https` / `type: local`），但本仓库没有用 1.11.4 二进制验证其运行兼容性。`shadowrocket.conf` 是不带 macOS 本地监听器的通用完整 Shadowrocket 配置，`shadowrocket-macos.conf` 是包含 macOS 本地 HTTP/SOCKS 监听设置的版本。三个链接文件内容一致，只按设备用途分别命名。
 
 这些文件包含真实节点信息，已被 `.gitignore` 忽略，不要提交、截图或公开分享。统一只读校验：
 
