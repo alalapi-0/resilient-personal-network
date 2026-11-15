@@ -27,3 +27,10 @@ docs/tree_snapshot.txt
 !configs/client/.gitkeep
 !nodes/.gitkeep
 !templates/.gitkeep
+
+# Generated Project-to-Skill research copies; the catalog stays in that project
+/research/p2s-resource-analysis/
+
+# Owner-local PCH plans are preserved outside public Git history.
+/docs/pch-rebuild-20261020/PLAN.md
+/docs/pch-rebuild-20261020/TASKS.json

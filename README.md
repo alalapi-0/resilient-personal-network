@@ -1,8 +1,6 @@
 # resilient-personal-network
 
-## 2026-11-15 既有备用 SSH 维修
-
-本次已恢复新 VPS 上的受限反向 SSH 账户，Mac 日常入口与诊断验证由 RPR 完成；范围、采用证据及回退见[组件记录](docs/mac-linux-repair-20261115/SSH_BACKUP.md)。VPN和代理未改，文件/网页/持续运行验收仍由RPR总状态维护。
+SSH 备份维护候选的参数、安全边界与验收状态见[说明](docs/mac-linux-repair-20261115/SSH_BACKUP.md)。
 
 > **说明**：这不是 Web/App 前端项目，没有 `npm run dev` 或本地开发服务器。所有操作通过 Bash 脚本在终端执行；真实配置与密钥保存在本地 `configs/`（已被 `.gitignore` 忽略），不会提交到 Git。
 
@@ -792,3 +790,15 @@ EXPECTED_EXIT_IP="<你的_VPS_IP>" bash scripts/check_macos_singbox.sh
 - 中长期建议：保留并持续建设自建节点，作为备用与学习路线。
 - 详细策略请见：`docs/05_managed_provider_strategy.md`。
 - AI 工作流优先级分流策略请见：`docs/28_ai_workflow_priority.md`。
+
+
+## Hub 当前管理映射
+
+由 PCH 按所有者 2026-10-15 的配置补齐授权整理。本节属于本文件，不另建状态源；项目当前任务变化时由原状态写责者同步维护。Status 表示项目管理生命周期，不表示执行过原生 Goal 暂停或恢复。
+
+依据：README 当前阶段与本地 fixture 边界。active 仅为仓库维护生命周期，不声称节点在线或已部署。
+
+Status: active
+Objective: 维护多系统网络接入与本地客户端配置生成工具
+Phase: 多系统接入与操作说明整理
+Next action: 维护多系统接入说明，并以本机隔离 fixture 核对客户端生成；真实网络连通与 VPS 操作仍须单独授权

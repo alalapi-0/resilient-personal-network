@@ -40,7 +40,7 @@ Before changing remote state, create and verify a backup. Validate locally befor
 
 Remote reads and health checks are allowed only when they are part of the user's requested task. Remote writes, package upgrades, service restarts, firewall changes, deployment, restore, or credential rotation require explicit current-turn authorization.
 
-Never automatically push, merge, deploy, publish, release, force-push, run migrations, or delete user data. A local commit does not authorize a push.
+Commit and normal push follow the current owner and task authorization. Review exact staged paths and verify the existing remote target. Never force-push. Deployment, release, migrations, credential changes and deletion require their own explicit authority.
 
 Do not start a macOS TUN connection or change system proxy/VPN state merely to validate files. Prefer the mixed inbound for a low-risk connectivity test. Never run sing-box TUN and Shadowrocket network takeover at the same time.
 
@@ -100,77 +100,17 @@ When claiming current versions, installation methods, or removed/deprecated fiel
 
 ## Governance and Git
 
-### Authority and role separation
+- One main agent owns the authorized task, source evidence, bounded changes and delivery. Use independent subtasks only when their scope is clear and parallel work helps; collect their results before closing.
+- Do not restore a fixed Governor/Repair/Judge workflow, mandatory role handoffs or repeating audit loops. Necessary review follows the concrete risk and current owner instructions.
+- Read the actual branch, pending files and original authority before writing. Reserve exact paths, retain unrelated work and private history, and stop overlapping edits when ownership conflicts.
+- Keep implementation, isolated fixture checks, actual runtime adoption and owner acceptance separate. Preserve failed checks and recovery points; no test or acceptance weakening.
+- Stage only reviewed non-sensitive paths. Apply the current owner/task Git authority to commits and normal main delivery; verify the remote afterward. A local commit or source delivery does not authorize deployment, account changes or service operations.
+- Preserve the sensitive paths, source-of-truth rules and explicit remote-operation boundaries above. Use only scoped inverse changes for task-owned recovery.
 
-- These repository instructions are subordinate to system, developer, current-user, global, and closer-scope instructions.
-- Root owns orchestration, evidence registration, repository control-plane writes, Git finalization, external effects, and user reporting.
-- Governor and Judge are read-only. A bounded Repair may edit only its assigned project-content scope; Root may also implement and verify project content when the controlling workflow allows it.
+## Agent 与 Hub 生命周期
 
-### Git metadata authority
+创建、接手及收尾读取 `/home/alalapi/.agents/pch-project-contract.md`，契约 `1.0.1-20261114`，SHA256 `7c3a485fb71d1e555c5acb98c94b8b4858c038ba959f63e3b73c5a9cc976ec50`。
 
-- Root alone finalizes staging, commits, and pushes. A writer may use only ordinary task-local Git metadata needed for its assigned work when explicitly authorized.
-- Governor and Judge remain strictly read-only.
-- Root may stage and commit a Judge-PASS/Governor-APPROVE candidate when the user has authorized committing.
-- Commit and push are distinct from deployment and remote infrastructure operations. Each requires the authority applicable to that exact effect; force-push, deployment, and release are never inferred.
+本项目稳定ID为 `resilient-personal-network`。工作前用 `pch-project begin --project-id resilient-personal-network` 读取Hub管理意图和原来源。`README.md` 继续保存原工作事实，由 `hub.connection.yaml` 映射；不新建业务State、数据库、Goal Hook或调度器。原写责者更新原来源后，按详细契约以新request ID、来源SHA与账本CAS执行finish，核对本ID的持久终态。
 
-### Immutable task contracts and evidence
-
-- Governor creates one immutable `TASK_CONTRACT` for exactly one highest-impact issue per governance round.
-- The contract freezes the objective, protected boundaries, authorized external effects, and acceptance criteria. Implementation paths and checks remain adaptive candidate details unless the contract expressly freezes them.
-- After `CREATE_TASK`, no role may relax or expand the frozen terms. A material change requires a successor contract under the controlling authority.
-- Root assigns immutable evidence identifiers.
-- Baseline and candidate evidence remain separate and include worktree or revision identity, scope or diff record, required-check commands, exit status, and material output.
-- Repair claims are not evidence unless independently captured and registered by Root.
-
-### Mandatory workflow
-
-For every governed project-changing task, use this sequence exactly:
-
-`READ_PROJECT_CONTRACT` → `GOVERNANCE_PLAN` → `BASELINE` → `REPAIR` → `VERIFY` → `INDEPENDENT_JUDGE` → `DECIDE`
-
-1. `READ_PROJECT_CONTRACT`
-   - Read the applicable project `AGENTS.override.md` or `AGENTS.md` and all explicit constraints.
-   - If no project-level AGENTS file exists, prepare a project-contract draft in the conversation first; do not write it unless the user requests it.
-   - Do not make broad project changes before a safe contract draft exists.
-2. `GOVERNANCE_PLAN`
-   - Spawn Governor with the user request, project constraints, and verified facts.
-   - Governor selects exactly one highest-impact issue and returns `CREATE_TASK`, `NEEDS_HUMAN`, or `STOP`.
-   - Freeze the resulting `TASK_CONTRACT` before Repair begins.
-3. `BASELINE`
-   - Before candidate edits, independently capture baseline behavior and required deterministic checks.
-   - Register the result as `baseline_evidence_id`.
-4. `REPAIR`
-   - Give any bounded writer only the immutable contract and relevant factual evidence.
-   - After two consecutive no-progress attempts, diagnose and change the approach before continuing; elapsed attempts alone do not require human escalation.
-5. `VERIFY`
-   - Root independently inspects the diff and runs the required deterministic checks.
-   - Register the verified candidate as `candidate_evidence_id`.
-   - Repair self-report is not verification.
-6. `INDEPENDENT_JUDGE`
-   - Spawn a new Judge thread for each judgment so its context is fresh.
-   - Give Judge only the immutable contract, baseline evidence, candidate evidence, and their identifiers.
-   - Do not pass Repair's persuasive explanation, confidence, recommendation, or self-assessment.
-   - Judge checks deterministic evidence before subjective criteria and returns only `PASS`, `FAIL`, or `INCONCLUSIVE`.
-7. `DECIDE`
-   - Give Governor the immutable contract, attempt count, evidence identifiers, and Judge result.
-   - Accept only `APPROVE`, `REQUEST_REPAIR`, `ROLLBACK`, `NEEDS_HUMAN`, or `STOP`.
-   - `APPROVE` requires a matching Judge `PASS` and approves only the candidate, not merge, push, deployment, or release.
-   - `REQUEST_REPAIR` is allowed while the issue remains repairable inside the immutable contract.
-   - `ROLLBACK` permits only a scoped inverse of changes created by the current task. Never discard pre-existing or user-owned work; if ownership is uncertain, return `NEEDS_HUMAN`.
-   - A genuine permission, protected-boundary, or owner-decision blocker must lead to `NEEDS_HUMAN`, `ROLLBACK`, or `STOP`; difficulty or elapsed attempts alone are not blockers.
-   - An `INCONCLUSIVE` judgment caused only by missing evidence may return to `VERIFY` without consuming another Repair attempt; it must never be converted into PASS.
-
-### Concurrency and write ownership
-
-- Before spawning Repair, reserve its normalized `allowed_paths` as its write scope.
-- Never run more than one Repair whose write scope overlaps another active writer.
-- Unknown, glob-based, symlink-based, or ambiguous overlap counts as overlap.
-- Release the reservation only after the Repair thread has stopped and its changes have been independently inspected.
-- Read-only Governor and Judge never receive write ownership.
-
-### Prohibited automatic actions
-
-- Never automatically merge, auto-merge, deploy, publish, release, run a database migration, or delete user data. Commit and normal push are allowed only under exact current authority and after the repository's required review.
-- No role may weaken tests, alter acceptance criteria, or bypass a failure to obtain approval.
-
-Only stage or commit when the user explicitly asks. Before committing, audit the exact staged path list, run the required checks, and repeat the sensitive-value scan. Use a focused commit message. Do not push unless separately authorized.
+本次所有者PCH治理授权覆盖规则、声明、隐私保护和正常Git整合；真实VPS、账号、公钥、SSH配置、网络接管、服务及部署继续遵守原授权边界。文件写入、新会话加载和实际生命周期闭环分别验证；不声称其他活动会话热加载。
