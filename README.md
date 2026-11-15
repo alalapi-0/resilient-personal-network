@@ -1,5 +1,9 @@
 # resilient-personal-network
 
+## 2026-11-15 既有备用 SSH 维修
+
+本次已恢复新 VPS 上的受限反向 SSH 账户，Mac 日常入口与诊断验证由 RPR 完成；范围、采用证据及回退见[组件记录](docs/mac-linux-repair-20261115/SSH_BACKUP.md)。VPN和代理未改，文件/网页/持续运行验收仍由RPR总状态维护。
+
 > **说明**：这不是 Web/App 前端项目，没有 `npm run dev` 或本地开发服务器。所有操作通过 Bash 脚本在终端执行；真实配置与密钥保存在本地 `configs/`（已被 `.gitignore` 忽略），不会提交到 Git。
 
 ## 项目名称
