@@ -572,18 +572,15 @@ def execute_adoption(payload, original, metadata, attributes, candidate, auth, j
     tx = dict(payload=payload, original=original, metadata=metadata, attributes=attributes,
               candidate=candidate, auth=auth, journal=journal, created=None,
               auth_identity=None, directories={}, published=None, config_conflict=False)
-    # Durable intent precedes useradd; the random GECOS marker is written atomically
-    # with the passwd entry, so an effect followed by timeout remains identifiable.
-    journal.record('account-create-intent', marker=journal.marker, username=USER,
-                   home=str(HOME), account_preimage='absent', group_preimage='absent')
+    # The entire operation has a durable recovery identity before publication.
+    # A marked account or public authorization must not exist before its
+    # restricting Match policy has been verified and loaded by the service.
+    journal.record('adoption-intent', marker=journal.marker, username=USER,
+                   home=str(HOME), account_preimage='absent', group_preimage='absent',
+                   config=str(CONFIG), expected_sha256=BASELINE,
+                   candidate_sha256=digest(candidate), before_identity=identity(metadata))
     committed, primary = False, None
     try:
-        run(['/usr/sbin/useradd', '--system', '--user-group', '--no-create-home',
-             '--home-dir', str(HOME), '--shell', '/usr/sbin/nologin',
-             '--comment', journal.marker, USER])
-        if resolve_account(tx) != 'owned':
-            raise RuntimeError('new marked account not found')
-        create_home(tx)
         try:
             tx['published'] = replace_config(candidate, BASELINE, metadata, attributes, identity(metadata), journal)
         except PublicationConflict as error:
@@ -595,6 +592,17 @@ def execute_adoption(payload, original, metadata, attributes, candidate, auth, j
         run(['/usr/sbin/sshd', '-t', '-f', str(CONFIG)])
         verify_publication(tx['published'], candidate)
         run(['/usr/bin/systemctl', 'reload', payload['service']])
+        journal.record('restrictions-loaded', candidate_sha256=digest(candidate))
+        # The GECOS marker is part of useradd's passwd entry; persist its intent
+        # before this first account effect, including effect-then-timeout cases.
+        journal.record('account-create-intent', marker=journal.marker, username=USER,
+                       home=str(HOME), account_preimage='absent', group_preimage='absent')
+        run(['/usr/sbin/useradd', '--system', '--user-group', '--no-create-home',
+             '--home-dir', str(HOME), '--shell', '/usr/sbin/nologin',
+             '--comment', journal.marker, USER])
+        if resolve_account(tx) != 'owned':
+            raise RuntimeError('new marked account not found')
+        create_home(tx)
         event('awaiting-new-tunnel-login', candidate_sha256=digest(candidate),
               original_sha256=BASELINE, original_length=len(original),
               suffix_sha256=digest(candidate[len(original):]),

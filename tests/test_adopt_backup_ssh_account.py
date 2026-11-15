@@ -115,6 +115,53 @@ class AdoptionTests(unittest.TestCase):
         with patch.object(adopt.os, 'fstat', side_effect=foreign), self.assertRaisesRegex(RuntimeError, 'owner/permissions'):
             adopt.PinnedDirectory(self.root)
 
+    def test_restrictions_loaded_before_user_or_authorization_can_appear(self):
+        def ordered(argv, data=None):
+            if argv[0]=='/usr/sbin/useradd':
+                self.assertEqual(self.config.read_bytes(),self.candidate)
+                self.assertFalse(self.home.exists())
+                self.assertEqual(self.users,{})
+                self.assertEqual(sum(c[0]=='/usr/bin/systemctl' for c in self.calls),1)
+                self.assertEqual(self.calls[-1][0],'/usr/bin/systemctl')
+                rows=[json.loads(line) for line in self.journal.path.read_text().splitlines()]
+                stages=[r['step'] for r in rows]
+                self.assertLess(stages.index('adoption-intent'),stages.index('config-exchange-intent'))
+                self.assertLess(stages.index('restrictions-loaded'),stages.index('account-create-intent'))
+            return self.fake_run(argv,data)
+        with patch.object(adopt,'run',side_effect=ordered), self.assertRaises(adopt.AdoptionFailure):
+            self.execute()
+        self.assertTrue(any(c[0]=='/usr/sbin/useradd' for c in self.calls))
+        self.assertEqual(self.config.read_bytes(),self.original)
+
+    def test_publication_failure_never_creates_account_or_authorization(self):
+        with patch.object(adopt,'rename_at',side_effect=OSError(errno.ENOSYS,'synthetic unavailable')):
+            with self.assertRaises(adopt.AdoptionFailure) as caught:
+                self.execute()
+        self.assertIsInstance(caught.exception.primary,OSError)
+        self.assertFalse(any(c[0]=='/usr/sbin/useradd' for c in self.calls))
+        self.assertFalse(any(c[0]=='/usr/bin/systemctl' for c in self.calls))
+        self.assertEqual(self.users,{})
+        self.assertEqual(self.groups,{})
+        self.assertFalse(self.home.exists())
+        self.assertEqual(self.config.read_bytes(),self.original)
+
+    def test_reload_failure_never_creates_account_or_authorization(self):
+        reload_failed=[]
+        def fail_first_reload(argv,data=None):
+            if argv[0]=='/usr/bin/systemctl' and not reload_failed:
+                self.calls.append(tuple(argv))
+                reload_failed.append(True)
+                raise RuntimeError('synthetic reload failed')
+            return self.fake_run(argv,data)
+        with patch.object(adopt,'run',side_effect=fail_first_reload), self.assertRaises(adopt.AdoptionFailure) as caught:
+            self.execute()
+        self.assertIn('synthetic reload failed',str(caught.exception.primary))
+        self.assertFalse(any(c[0]=='/usr/sbin/useradd' for c in self.calls))
+        self.assertEqual(self.users,{})
+        self.assertEqual(self.groups,{})
+        self.assertFalse(self.home.exists())
+        self.assertEqual(self.config.read_bytes(),self.original)
+
     def test_creation_intent_fsynced_before_useradd_effect_timeout(self):
         synced_intent = []
         real_fsync = os.fsync
@@ -126,6 +173,9 @@ class AdoptionTests(unittest.TestCase):
         def timeout(argv, data=None):
             if argv[0] == '/usr/sbin/useradd':
                 self.assertTrue(synced_intent)
+                self.assertEqual(self.config.read_bytes(), self.candidate)
+                self.assertTrue(any(c[0]=='/usr/bin/systemctl' for c in self.calls))
+                self.assertFalse(self.home.exists())
                 self.assertEqual(stat.S_IMODE(self.journal.path.stat().st_mode), 0o600)
                 self.fake_run(argv, data)
                 raise subprocess.TimeoutExpired('synthetic-useradd', 20)
@@ -262,7 +312,9 @@ class AdoptionTests(unittest.TestCase):
                     changed.append(True)
         with patch.object(adopt.os, 'fsync', side_effect=replace_named), self.assertRaisesRegex(RuntimeError, 'journal replaced'):
             self.execute()
-        self.assertEqual(self.calls, [])
+        self.assertFalse(any(c[0]=='/usr/sbin/useradd' for c in self.calls))
+        self.assertEqual(self.users, {})
+        self.assertFalse(self.home.exists())
         self.assertEqual(self.journal.path.read_bytes(), b'foreign-journal')
 
     def test_real_exchange_retains_original_and_validates_receipt(self):
