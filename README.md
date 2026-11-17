@@ -2,6 +2,8 @@
 
 SSH 备份维护候选的参数、安全边界与验收状态见[说明](docs/mac-linux-repair-20261115/SSH_BACKUP.md)。
 
+原生remote-rule cache的非Root公开producer／禁网consumer夹具见[接口](docs/linux_rule_cache_fixture.md)；不接受真实profile或live DB，不是生产采用或网络恢复证明。
+
 > **说明**：这不是 Web/App 前端项目，没有 `npm run dev` 或本地开发服务器。所有操作通过 Bash 脚本在终端执行；真实配置与密钥保存在本地 `configs/`（已被 `.gitignore` 忽略），不会提交到 Git。
 
 ## 项目名称
